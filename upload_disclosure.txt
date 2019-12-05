@@ -1,0 +1,31 @@
+D3Tool Tooth Segmentation Application
+    Copyright (C) 2019 Patrick R. Moore, D3Tool LLC
+
+Cloud Upload Disclosure
+
+The initial mesh processing is cloud based and therefore requires 
+the transmission of the surface mesh to a Google Cloud server for 
+processing.  The goal of this project is to create a large data 
+set of segmented meshes for later analysis.  For that reason, the 
+result of the segmentation is also uploaded to a Google Cloud server.  
+Because machine learning is new area of exploration, we may contract 
+with 3rd parties to analyze it in bulk.  It is important that no patient 
+identifiers be in the file names, or embossed in the geometry of the 
+model.  Because only the mesh geometry is stored with randomized file 
+names, we have no way to allow access to any particular file that a 
+user uploads.  
+
+In summary
+
+1.  Mesh surface data will be transmitted to, processed and stored 
+on a server
+2.  No data is stored which maps it to the original user
+3.  The data will not be accessible by the user aftward
+4.  We will use the data for further research, potentially 
+including transfer to 3rd parties for analysis.
+5.  No patient data should be included in the object name or 3D 
+geometry of the mesh file.
+
+Users must acknowledge they have read this paragraph in order for the 
+software to function.
+Users can opt out by choosing not to use the software.
