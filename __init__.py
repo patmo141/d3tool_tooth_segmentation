@@ -70,7 +70,8 @@ class AITeethPreferences(AddonPreferences):
     
     tooth_system = EnumProperty(name = 'Tooth Nomenclature', items = [('FDI', 'FDI', 'FDI'),('UNIVERSAL','UNIVERSAL','UNVERSAL')], default = 'UNIVERSAL')
     
-    key_path = StringProperty(name = 'User Key', subtype = 'FILE_PATH', default = '')
+    key_path = StringProperty(name = 'User Key File', subtype = 'FILE_PATH', default = '')
+    key_string = StringProperty(name = 'User Key', subtype = 'PASSWORD',  default = '')
     
     #Segmentation Editor Behavior
     spline_preview_tess = IntProperty(name = 'Spline Teseslation', default = 20, min = 3, max = 100)
@@ -121,7 +122,8 @@ class AITeethPreferences(AddonPreferences):
         row = layout.row(align=True)
         row.prop(self, "key_path")
 
-        
+        row = layout.row(align=True)
+        row.prop(self, "key_string")
         
 class VIEW3D_PT_AITeeth(bpy.types.Panel):
     bl_space_type = "VIEW_3D"
@@ -160,6 +162,8 @@ class VIEW3D_PT_AITeeth(bpy.types.Panel):
 
         row = layout.row()
         row.label('Get Solid Teeth')
+        row = layout.row()
+        row.operator("ai_teeth.cloud_convex_teeth")
         
 
     

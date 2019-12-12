@@ -759,7 +759,7 @@ class AITeeth_OT_cloud_process(bpy.types.Operator):
         if 'FAILED' in ret_val:
             return (None, None, 'FAILED')
               
-        job_submit_url =  "http://104.196.199.206:7777/api/blender_job?name={}&input={}".format(name, name)    
+        job_submit_url =  "http://104.196.199.206:7777/api/blender_job?name={}&input={}&operation={}".format(name, name, 'bake_vertex_color')    
         job_id = requests.get(job_submit_url).text
     
         return (job_id, name, 'SUCCESS')

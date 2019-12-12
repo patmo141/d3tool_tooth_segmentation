@@ -3,6 +3,7 @@ import os
 import shutil
 import time
 import requests
+import uuid
 from threading import Thread
 
 
@@ -26,6 +27,20 @@ def make_temp():
     shutil.copy(current_file, os.path.join(temp_path, name))
     return os.path.join(temp_path, name)
 
+def make_temp_limited(data_blocks):
+    
+    
+    
+    temp_path, current_file = define_paths()
+    name = '{}_{}_{}'.format('export', int(time.time()*1000), os.path.basename(current_file))
+    
+    sent_data_blocks_path = os.path.join(temp_path, name)
+    
+    bpy.data.libraries.write(sent_data_blocks_path, data_blocks, fake_user=True, compress = True)
+
+    return sent_data_blocks_path
+    
+    
 def delete_current_temp():
     temp_path, current_file = define_paths()
     for blend in os.listdir(temp_path):

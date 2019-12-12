@@ -2379,7 +2379,7 @@ class AITeeth_UI_Tools():
                 new_bme = new_bmesh_from_bmelements(isl)
                 
                 name = p.label
-                new_me = bpy.data.meshes.new(name)
+                new_me = bpy.data.meshes.new(name+'_tooth')
                 new_ob = bpy.data.objects.new(name, new_me)
                 new_ob.matrix_world = self.net_ui_context.mx
                 new_bme.to_mesh(new_me)
