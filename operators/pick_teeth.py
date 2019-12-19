@@ -73,7 +73,7 @@ class AITEETH_OT_label_maxillary_teeth(VIEW3D_OT_points_picker):
             self.active_label = preference_tooth_label('18')
         elif self.seg_type == 'MAND_PRIM':
             label_list = lower_prim
-            self.active_label = preferece_tooth_label('K')
+            self.active_label = preference_tooth_label('K')
         elif self.seg_type == 'MAND_MIXED':
             label_list = lower_perm + lower_prim
             self.active_label = preference_tooth_label('19')

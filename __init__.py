@@ -45,6 +45,7 @@ from .op_ai_teeth.ai_teeth import AITeeth_Polytrim
 from . import salience
 from . import helper_ops
 from . import get_convex_teeth
+from . import optimize_model
 from .operators import pick_teeth
 
 class AISceneSettings(bpy.types.PropertyGroup):
@@ -153,15 +154,17 @@ class VIEW3D_PT_AITeeth(bpy.types.Panel):
         row = layout.row()
         row.operator("ai_teeth.anonymize_names", text = "Anonymize Name")
         row = layout.row()
+        row.operator("ai_teeth.optimize_model", text = "Optimize Mesh")
+        row = layout.row()
         row.operator("aiteeth.mark_tooth_locations", text = 'Indicate Teeth')
         row = layout.row()
         row.operator("ai_teeth.cloud_preprocess_model", text = "Cloud Preprocess Model")
         row = layout.row()
         row.operator("ai_teeth.polytrim", text = "Interactive Assisted Segment")
         
-
         row = layout.row()
-        row.label('Get Solid Teeth')
+        row.label('Premium/Cloud Features')
+
         row = layout.row()
         row.operator("ai_teeth.cloud_convex_teeth")
         
@@ -175,6 +178,7 @@ def register():
     helper_ops.register()
     get_convex_teeth.register()
     pick_teeth.register()
+    optimize_model.register()
     
     bpy.utils.register_class(AISceneSettings)
     bpy.types.Scene.ai_settings = bpy.props.PointerProperty(type = AISceneSettings)
@@ -186,6 +190,7 @@ def unregister():
     salience.unregister()
     helper_ops.unregister()
     pick_teeth.unregister()
+    optimize_model.unregister()
     get_convex_teeth.unregister()
     bpy.utils.unregister_class(AISceneSettings)
     del bpy.types.scene.ai_settings

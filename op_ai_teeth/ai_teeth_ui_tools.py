@@ -2362,16 +2362,16 @@ class AITeeth_UI_Tools():
         mat = bpy.data.materials.get("patches")
         
         
+        if not self.net_ui_context.bme.verts.layers.string.get('Label'):
+            label_layer = self.net_ui_context.bme.loops.layers.color.new('Label')
+        else:
+            label_layer = self.net_ui_context.bme.loops.layers.color.get('Label')
+                
+                
         if len(self.seed_faces):
-            
             gingiva = set(self.net_ui_context.bme.faces[:])
-            
             all_teeth = set()
             
-            
-        
-        
-        
             for i, p in enumerate(patches[0:len(patches)]): #skip the end island, which is the biggest
                 isl = p.patch_faces
                 gingiva.difference_update(isl) #this tooth is no longer part of the gingiva
