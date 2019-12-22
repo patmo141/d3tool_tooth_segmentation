@@ -127,7 +127,7 @@ class AITeeth_Polytrim(AITeeth_States, AITeeth_UI_Init, AITeeth_UI_Tools, AITeet
         vcol.active_render = True
         mesh.update()
         
-        self.net_ui_context = self.NetworkUIContext(self.context, geometry_mode = prefs.destructive)
+        self.net_ui_context = self.NetworkUIContext(self.context, geometry_mode = 'DESTRUCTIVE')
 
         self.hint_bad = True   #draw obnoxious things over the bad segments
         self.input_net = InputNetwork(self.net_ui_context)

@@ -634,7 +634,9 @@ class AITeeth_OT_cloud_process(bpy.types.Operator):
         
         self.executor = ThreadPoolExecutor()  
         self.future = self.executor.submit(self.upload_job)
-                
+        self.download_future = None
+        #self.downloading = True
+               
         self.start_time = time.time()
         self.last_check = time.time()
         
@@ -651,12 +653,13 @@ class AITeeth_OT_cloud_process(bpy.types.Operator):
             return {'CANCELLED'}
 
         
-        if event.type == 'TIMER':
+        elif event.type == 'TIMER' and self.download_future == None:
             time_elapsed = str(time.time() - self.start_time)[0:4]
+            
             if self.future.done():
                 
                 (j_id, file_name, result) = self.future.result()
-                print(j_id, file_name, result)
+                #print(j_id, file_name, result)
                 if result == 'SUCCESS':
                     self.job_id = j_id 
                     self.file_name = file_name
@@ -668,7 +671,10 @@ class AITeeth_OT_cloud_process(bpy.types.Operator):
                 self.msg = 'Uploading File...' + time_elapsed + 'sec'
                 return {'RUNNING_MODAL'} 
                
-            if (time.time() - self.last_check) < 3.0: return {'RUNNING_MODAL'}
+            if (time.time() - self.last_check) < 2.0:
+                print('Not enough time passed')
+                return {'RUNNING_MODAL'}
+            self.last_check = time.time()
             # change theme color, silly!
             ret_dict = ping_server(self.job_id)
           
@@ -681,57 +687,28 @@ class AITeeth_OT_cloud_process(bpy.types.Operator):
                 
             elif ret_dict['status'] == 'finished':
                 
-                #download_the_file
-                server = 'http://104.196.199.206:7776/download'
-                dl_name = '{}{}'.format("computed_", self.file_name)
-                print(dl_name)
-                downloaded_file_path = download_nonthreaded(server, dl_name)
-                print(downloaded_file_path)
-                tmp_path, cur_file = define_paths()
-               
-                fullBlendPath = os.path.join(tmp_path, dl_name)
+                self.msg = 'Downloading File...' + time_elapsed + 'sec'
                 
+                self.download_future = self.executor.submit(self.download_job)
+                self.downloading = True
+                return {'RUNNING_MODAL'}
+            
+            
+        elif event.type == 'TIMER' and self.download_future != None:
+            print('waiting on download')
+            time_elapsed = str(time.time() - self.start_time)[0:4]
+            self.msg = 'Downloading File...' + time_elapsed + 'sec'
+            if self.download_future.done():
                 
-                #assets_path = join(dirname(abspath(__file__)), "data_assets")
-                #fullBlendPath = join(assets_path, 'articulator.blend')
-                #print(assets_path)
-                print(fullBlendPath)
-                print(os.path.exists(fullBlendPath))
-    
-    
-                ob_orig = context.object
-                ob_name = ob_orig.name
-                me = ob_orig.data
+                downloaded_file_path  = self.download_future.result()
                 
-                children = [child for child in ob_orig.children]
-                context.scene.objects.active = None
-                context.scene.objects.unlink(ob_orig)
-                bpy.data.objects.remove(ob_orig)
-                bpy.data.meshes.remove(me)
-                
-                obpath = fullBlendPath + '\\Object\\'
-                bpy.ops.wm.append(filepath = fullBlendPath,
-                                          directory = obpath,
-                                          filename = ob_name)
-                
-                ob = bpy.data.objects.get(ob_name)
-                ob.select = True
-                context.scene.objects.active = ob
-                
-                for child in children:
-                    child.parent = ob
-                #orig_data_names = lambda: None
-                #with bpy.data.libraries.load(fullBlendPath) as (data_from, data_to):
-                #    for attr in dir(data_to):
-                #        setattr(data_to, attr, getattr(data_from, attr))
-                #        attrib = getattr(data_from, attr)
-                #        if len(attrib) > 0:
-                #            setattr(orig_data_names, attr, attrib.copy())
-                
+                self.retrieve_results(context, downloaded_file_path)
                 self.execute(context)
                 bpy.types.SpaceView3D.draw_handler_remove(self._handle, 'WINDOW')
                 context.window_manager.event_timer_remove(self._timer)
                 return {'FINISHED'}
+            
+            return {'RUNNING_MODAL'}
 
         return {'RUNNING_MODAL'}
 
@@ -763,7 +740,49 @@ class AITeeth_OT_cloud_process(bpy.types.Operator):
         job_id = requests.get(job_submit_url).text
     
         return (job_id, name, 'SUCCESS')
+    
+    def download_job(self):
+        
+        #download_the_file
+        server = 'http://104.196.199.206:7776/download'
+        dl_name = '{}{}'.format("computed_", self.file_name)
+        print(dl_name)
+        downloaded_file_path = download_nonthreaded(server, dl_name)
+        
+    
+        return downloaded_file_path
+    
+    def retrieve_results(self, context, downloaded_file_path):
+        dl_name = '{}{}'.format("computed_", self.file_name)
+        tmp_path, cur_file = define_paths()
+        fullBlendPath = os.path.join(tmp_path, dl_name)
+        
+        print(fullBlendPath)
+
+        ob_orig = context.object
+        ob_name = ob_orig.name
+        me = ob_orig.data
+        
+        children = [child for child in ob_orig.children]
+        context.scene.objects.active = None
+        context.scene.objects.unlink(ob_orig)
+        bpy.data.objects.remove(ob_orig)
+        bpy.data.meshes.remove(me)
+        
+        obpath = fullBlendPath + '\\Object\\'
+        bpy.ops.wm.append(filepath = fullBlendPath,
+                                  directory = obpath,
+                                  filename = ob_name)
+        
+        ob = bpy.data.objects.get(ob_name)
+        ob.select = True
+        context.scene.objects.active = ob
+        
+        for child in children:
+            child.parent = ob
+        
             
+                
 class AITeeth_OT_select_verts_by_salience_color(bpy.types.Operator):
     """Select mesh vertice by the vertex color"""
     bl_idname = "cut_mesh.select_verts_salience_color"

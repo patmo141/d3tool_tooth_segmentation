@@ -2362,18 +2362,60 @@ class AITeeth_UI_Tools():
         mat = bpy.data.materials.get("patches")
         
         
+        
         if not self.net_ui_context.bme.verts.layers.string.get('Label'):
-            label_layer = self.net_ui_context.bme.loops.layers.color.new('Label')
+            vert_label_layer = self.net_ui_context.bme.verts.layers.string.new('Label')
         else:
-            label_layer = self.net_ui_context.bme.loops.layers.color.get('Label')
+            vert_label_layer = self.net_ui_context.bme.verts.layers.string.get('Label')
                 
+        if not self.net_ui_context.bme.edges.layers.string.get('Label'):
+            edge_label_layer = self.net_ui_context.bme.edges.layers.string.new('Label')
+        else:
+            edge_label_layer = self.net_ui_context.bme.edges.layers.string.get('Label')
                 
+        #if not self.net_ui_context.bme.faces.layers.string.get('Label'):
+        #    face_label_layer = self.net_ui_context.bme.faces.layers.string.new('Label')
+        #else:
+        #    face_label_layer = self.net_ui_context.bme.faces.layers.string.get('Label')
+                
+        
+                
+        
+                    
         if len(self.seed_faces):
             gingiva = set(self.net_ui_context.bme.faces[:])
             all_teeth = set()
             
             for i, p in enumerate(patches[0:len(patches)]): #skip the end island, which is the biggest
                 isl = p.patch_faces
+                
+                start = time.time()
+                verts = set()
+                edges = set()
+                for f in isl:
+                    verts.update(f.verts[:])
+                    edges.update(f.edges[:])
+                    #f[face_label_layer] = p.label.encode()
+                
+                for v in verts:
+                    msg = v[vert_label_layer].decode()
+                    if  msg == '':
+                        new_msg = p.label
+                    else:
+                        new_msg = msg + ',' + p.label
+                    v[vert_label_layer] = new_msg.encode()
+                        
+                for ed in edges:
+                    msg = ed[edge_label_layer].decode()
+                    if  msg == '':
+                        new_msg = p.label
+                    else:
+                        new_msg = msg + ',' + p.label
+                    ed[edge_label_layer] = new_msg.encode()
+                
+                end = time.time()
+                print('took %f seconds to sort and label patch' % (end-start)) 
+                   
                 gingiva.difference_update(isl) #this tooth is no longer part of the gingiva
                 all_teeth.update(isl)
                 new_bme = new_bmesh_from_bmelements(isl)
@@ -2836,13 +2878,15 @@ class AITeeth_UI_Tools():
             
             
         if self.net_ui_context.geometry_mode == 'DESTRUCTIVE':
+            self.net_ui_context.bme.to_mesh(self.net_ui_context.ob.data)   
             bpy.data.meshes.remove(self.net_ui_context.backup_data)
             
         else:
             del_data = self.net_ui_context.ob.data
             self.net_ui_context.ob.data = self.net_ui_context.backup_data
             bpy.data.meshes.remove(del_data)
-            
+        
+         
         self.net_ui_context.bme.free() #and other cleanup?
         finish = time.time()
         print('Entire workflow took %f seconds' % (finish - self.start_time))
