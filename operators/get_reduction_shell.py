@@ -245,13 +245,11 @@ class AITeeth_OT_send_cloud_reduction_shell(bpy.types.Operator):
                 bpy.types.SpaceView3D.draw_handler_remove(self._handle, 'WINDOW')
                 context.window_manager.event_timer_remove(self._timer)
                 
+                return {'FINISHED'}
 
         return {'RUNNING_MODAL'}
 
     def execute(self, context):
-        
-        
-        
         
         print('WE DID IT')
         return {'FINISHED'}
