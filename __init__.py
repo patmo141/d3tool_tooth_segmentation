@@ -42,11 +42,10 @@ from bpy.props import StringProperty, IntProperty, BoolProperty, EnumProperty, F
 #Tools
 from .op_ai_teeth.ai_teeth import AITeeth_Polytrim
 
-from . import salience
+
 from . import helper_ops
-from . import get_convex_teeth
-from . import optimize_model
-from .operators import pick_teeth
+from . import salience
+from .operators import pick_teeth, optimize_model, get_convex_teeth, get_reduction_shell, get_two_part_model
 
 class AISceneSettings(bpy.types.PropertyGroup):
     accept_ua = BoolProperty(name = 'Accept User Agreement', default = False, description = "Acknowledge that you have read and agree to the user agreement")
@@ -168,7 +167,11 @@ class VIEW3D_PT_AITeeth(bpy.types.Panel):
         row = layout.row()
         row.operator("ai_teeth.cloud_convex_teeth")
         
-
+        row = layout.row()
+        row.operator("ai_teeth.cloud_two_part_model")
+        
+        row = layout.row()
+        row.operator("ai_teeth.cloud_reduction_shell")
     
 def register(): 
     bpy.utils.register_class(AITeethPreferences)
@@ -179,6 +182,8 @@ def register():
     get_convex_teeth.register()
     pick_teeth.register()
     optimize_model.register()
+    get_reduction_shell.register()
+    get_two_part_model.register()
     
     bpy.utils.register_class(AISceneSettings)
     bpy.types.Scene.ai_settings = bpy.props.PointerProperty(type = AISceneSettings)
@@ -192,5 +197,7 @@ def unregister():
     pick_teeth.unregister()
     optimize_model.unregister()
     get_convex_teeth.unregister()
+    get_reduction_shell.unregister()
+    get_two_part_model.unregister()
     bpy.utils.unregister_class(AISceneSettings)
     del bpy.types.scene.ai_settings
