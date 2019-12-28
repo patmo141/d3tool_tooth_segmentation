@@ -296,8 +296,8 @@ class AITeeth_OT_cloud_convex_teeth_credit(bpy.types.Operator):
     credits_avail = FloatProperty(name = 'Available Credits', default = 0.0)
     @classmethod
     def poll(cls, context):
-        if len([ob for ob in bpy.data.objects if "Convex" in ob.name]) != 0: return False  #already existing convex teeth
-        if len([ob for ob in bpy.data.objects if "tooth" in ob.data.name]) == 0: return False #no teeth to make convex
+        if len([ob for ob in bpy.data.objects if ob.type == 'MESH' and "Convex" in ob.name]) != 0: return False  #already existing convex teeth
+        if len([ob for ob in bpy.data.objects if ob.type == 'MESH' and "tooth" in ob.data.name]) == 0: return False #no teeth to make convex
         return True
 
     def invoke(self, context, event):

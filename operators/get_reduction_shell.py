@@ -224,7 +224,7 @@ class AITeeth_OT_send_cloud_reduction_shell(bpy.types.Operator):
                 dem_credits = requests.get("http://104.196.199.206/credit?credit={}&operation=sub&key={}".format(self.credit_cost, get_cloud_key()))
                 
                 Shell = bpy.data.objects.get('Shell')
-                base_ob = [ob for ob in bpy.context.scene.objects if 'Salience' in ob.data.vertex_colors][0]
+                base_ob = [ob for ob in bpy.context.scene.objects if ob.type == 'MESH' and 'Salience' in ob.data.vertex_colors][0]
                 
                 new_me = base_ob.to_mesh(context.scene, apply_modifiers = True, settings = 'PREVIEW')
                 
@@ -298,7 +298,7 @@ class AITeeth_OT_cloud_reduction_shell_credit(bpy.types.Operator):
     def poll(cls, context):
         
         if len([ob for ob in bpy.data.objects if "tooth" in ob.data.name and 'Convex' not in ob.name and ob.select]) == 0: return False #no teeth to make convex
-        if len([ob for ob in bpy.context.scene.objects if 'Salience' in ob.data.vertex_colors]) == 0: return False  #no objectt to subtract
+        if len([ob for ob in bpy.context.scene.objects if ob.type == 'MESH' and 'Salience' in ob.data.vertex_colors]) == 0: return False  #no objectt to subtract
         return True
 
     def invoke(self, context, event):
@@ -330,7 +330,7 @@ class AITeeth_OT_cloud_reduction_shell_credit(bpy.types.Operator):
         layout = self.layout
         
         row = layout.row()
-        reduction_teeth = [ob for ob in bpy.data.objects if "tooth" in ob.data.name and 'Convex' not in ob.name and ob.select]
+        reduction_teeth = [ob for ob in bpy.data.objects if ob.type == 'MESH' and "tooth" in ob.data.name and 'Convex' not in ob.name and ob.select]
         
         row.label("You have %i teeth selected for reduction" % len(reduction_teeth))
         

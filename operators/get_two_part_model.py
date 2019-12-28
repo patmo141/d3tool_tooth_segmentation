@@ -254,7 +254,7 @@ class AITeeth_OT_send_two_part_model(bpy.types.Operator):
                 
     
                 Shell = bpy.data.objects.get('Teeth Subtract')
-                base_ob = [ob for ob in bpy.context.scene.objects if 'Salience' in ob.data.vertex_colors][0]
+                base_ob = [ob for ob in bpy.context.scene.objects if ob.type == 'MESH' and 'Salience' in ob.data.vertex_colors][0]
                 
                 new_me = base_ob.to_mesh(context.scene, apply_modifiers = True, settings = 'PREVIEW')
                 
@@ -296,7 +296,7 @@ class AITeeth_OT_send_two_part_model(bpy.types.Operator):
         
         
         teeth  = [ob for ob in bpy.data.objects if ob.type == 'MESH' and "tooth" in ob.data.name and "Convex" not in ob.name] #only the data we want
-        base_ob = [ob for ob in bpy.context.scene.objects if 'Salience' in ob.data.vertex_colors]
+        base_ob = [ob for ob in bpy.context.scene.objects if ob.type == 'MESH' and 'Salience' in ob.data.vertex_colors]
         
         
         print(base_ob)
@@ -331,8 +331,8 @@ class AITeeth_OT_cloud_two_part_model_credit(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
         if len([ob for ob in bpy.data.objects if "Convex" in ob.name]) != 0: return False  #already existing convex teeth
-        if len([ob for ob in bpy.data.objects if "tooth" in ob.data.name]) == 0: return False #no teeth to make convex
-        if len([ob for ob in bpy.context.scene.objects if 'Salience' in ob.data.vertex_colors]) == 0: return False
+        if len([ob for ob in bpy.data.objects if ob.type == 'MESH' and "tooth" in ob.data.name]) == 0: return False #no teeth to make convex
+        if len([ob for ob in bpy.context.scene.objects if ob.type == 'MESH' and 'Salience' in ob.data.vertex_colors]) == 0: return False
         return True
 
     def invoke(self, context, event):
