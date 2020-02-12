@@ -42,10 +42,11 @@ from bpy.props import StringProperty, IntProperty, BoolProperty, EnumProperty, F
 #Tools
 from .op_ai_teeth.ai_teeth import AITeeth_Polytrim
 
-
+from . import ortho
 from . import helper_ops
 from . import salience
 from .operators import pick_teeth, optimize_model, get_convex_teeth, get_reduction_shell, get_two_part_model
+
 
 class AISceneSettings(bpy.types.PropertyGroup):
     accept_ua = BoolProperty(name = 'Accept User Agreement', default = False, description = "Acknowledge that you have read and agree to the user agreement")
@@ -184,6 +185,7 @@ def register():
     optimize_model.register()
     get_reduction_shell.register()
     get_two_part_model.register()
+    ortho.register()
     
     bpy.utils.register_class(AISceneSettings)
     bpy.types.Scene.ai_settings = bpy.props.PointerProperty(type = AISceneSettings)
@@ -199,5 +201,7 @@ def unregister():
     get_convex_teeth.unregister()
     get_reduction_shell.unregister()
     get_two_part_model.unregister()
+    ortho.unregister()
+    
     bpy.utils.unregister_class(AISceneSettings)
     del bpy.types.scene.ai_settings
