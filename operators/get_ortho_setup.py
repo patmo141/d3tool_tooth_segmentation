@@ -1,9 +1,4 @@
 '''
-Created on Dec 26, 2019
-
-@author: Patrick
-'''
-'''
 Created on Nov 27, 2019
 
 @author: Patrick
@@ -59,8 +54,16 @@ def load_from_library(blendfile_path, data_attr, filenames=None, overwrite_data=
             target_attr[i].name = data_name
     return getattr(data_to, data_attr)
 
+
+##Methods to overwrite per job
+def validate_scene(scn):
+    #make sure the scene is appropriate for cloud operation
+    return True
+    
     
 def check_credits(key):
+    #submit user key to the credit check link
+    credit_balance = 4.0
     
     server = 'http://104.196.199.206'
     
@@ -91,6 +94,22 @@ def get_cloud_key():
         
     return key_val
 
+def sumbit_job(context, job_type, user_key):
+    #need some job_type dictionary so the server knows wtf to do with it?
+    #collect all the data, package it into blend file
+    return
+
+
+def retrieve_preview():
+    #get some preview data
+    #put it in the scene
+    return
+
+def main(context):
+    for ob in context.scene.objects:
+        print(ob)
+
+
 
 def ping_server(job_id):
     url = "http://104.196.199.206:7777/api/job_details?job_id=" + job_id #1569930574014
@@ -110,10 +129,10 @@ def draw_callback_px(self, context):
     blf.size(font_id, 30, 72)
     blf.draw(font_id, self.msg)
 
-class AITeeth_OT_send_cloud_reduction_shell(bpy.types.Operator):
-    """Process model for shell reduction"""
-    bl_idname = "ai_teeth.send_cloud_reduction_shell"
-    bl_label = "Send Cloud Reduction Shell"
+class AITeeth_OT_send_ortho_setup(bpy.types.Operator):
+    """Process convexified teeth shells in clod"""
+    bl_idname = "ai_teeth.send_ortho_setup"
+    bl_label = "Send Ortho Setup"
 
     _timer = None
 
@@ -139,7 +158,7 @@ class AITeeth_OT_send_cloud_reduction_shell(bpy.types.Operator):
         self.start_time = time.time()
         self.last_check = time.time()
         
-        self.credit_cost = 1.5
+        self.credit_cost = 0.0
         self.job_id = ''
         self.file_name = ''
         self.job_done = False
@@ -207,6 +226,7 @@ class AITeeth_OT_send_cloud_reduction_shell(bpy.types.Operator):
                 print(fullBlendPath)
                 print(os.path.exists(fullBlendPath))
     
+
                 with bpy.data.libraries.load(fullBlendPath) as (data_from, data_to):
                     obj_list = [ob for ob in data_from.objects]
                     
@@ -215,36 +235,23 @@ class AITeeth_OT_send_cloud_reduction_shell(bpy.types.Operator):
                 obs = load_from_library(fullBlendPath, "objects", filenames=obj_list, overwrite_data=False, action="APPEND")
                
                 for ob in bpy.data.objects:
-                    if ob.name not in context.scene.objects:
+                    if 'Convex' in ob.name and ob.name not in context.scene.objects:
                         context.scene.objects.link(ob)
-
+                    if 'root' in ob.name and ob.name not in context.scene.objects:
+                        context.scene.objects.link(ob)
+                    
                 for ob in bpy.data.objects:
-                    ob.hide = True
+                    if ob.type == 'MESH' and "tooth" in ob.data.name and "Convex" not in ob.name:
+                        ob.hide = True
                 
+                print(get_cloud_key())
                 dem_credits = requests.get("http://104.196.199.206/credit?credit={}&operation=sub&key={}".format(self.credit_cost, get_cloud_key()))
                 
-                Shell = bpy.data.objects.get('Shell')
-                base_ob = [ob for ob in bpy.context.scene.objects if ob.type == 'MESH' and 'Salience' in ob.data.vertex_colors][0]
+                print('got dem credits')
+                print(dem_credits)
                 
-                new_me = base_ob.to_mesh(context.scene, apply_modifiers = True, settings = 'PREVIEW')
-                
-                #colors = [col for col in new_me.vertex_colors]
-                #for col in colors:
-                #    new_me.vertex_colors.remove(col)
-                
-                new_ob = bpy.data.objects.new('Prepped Model', new_me)
-                context.scene.objects.link(new_ob)
-                new_ob.matrix_world = base_ob.matrix_world
-                mod = new_ob.modifiers.new('Subtract', type = 'BOOLEAN')
-                mod.operation = 'DIFFERENCE'
-                mod.object = Shell
-        
-                context.space_data.viewport_shade = 'SOLID'
-                context.space_data.show_textured_solid = False
-        
                 bpy.types.SpaceView3D.draw_handler_remove(self._handle, 'WINDOW')
                 context.window_manager.event_timer_remove(self._timer)
-                
                 return {'FINISHED'}
 
         return {'RUNNING_MODAL'}
@@ -264,42 +271,39 @@ class AITeeth_OT_send_cloud_reduction_shell(bpy.types.Operator):
     
     def upload_job(self):
         
-        teeth  = set([ob for ob in bpy.data.objects if ob.type == 'MESH' and "tooth" in ob.data.name and "Convex" not in ob.name and ob.select]) #only the data we want
-        #base_ob = [ob for ob in bpy.context.scene.objects if 'Salience' in ob.data.vertex_colors]
+        teeth  = [ob for ob in bpy.data.objects if ob.type == 'MESH' and "tooth" in ob.data.name and "Convex" not in ob.name] #only the data we want
+        base_ob = [ob for ob in bpy.context.scene.objects if ob.type == 'MESH' and 'Salience' in ob.data.vertex_colors]
         
-        #data = set(teeth + base_ob)
-        
+        data = set(teeth + base_ob)
         
         start = time.time()
-        location = make_temp_limited(teeth)
+        location = make_temp_limited(data)
         server = 'http://104.196.199.206:7776/'
             
         prefix = str(uuid.uuid4())[0:8]
-        name = prefix + '_reduction_shell.blend'
+        name = prefix + '_segmentation.blend'
         ret_val = upload_nonthreaded(server, location, name)
             
         if 'FAILED' in ret_val:
             return (None, None, 'FAILED')
               
-        job_submit_url =  "http://104.196.199.206:7777/api/blender_job?name={}&input={}&operation={}".format(name, name, 'make_reduction_shell')    
+        job_submit_url =  "http://104.196.199.206:7777/api/blender_job?name={}&input={}&operation={}".format(name, name, 'full_ortho_setup')    
         job_id = requests.get(job_submit_url).text
     
         return (job_id, name, 'SUCCESS')
     
     
-class AITeeth_OT_cloud_reduction_shell_credit(bpy.types.Operator):
-    """Submit file to get reduction shell"""
-    bl_idname = "ai_teeth.cloud_reduction_shell"
-    bl_label = "Cloud Reduction Shell"
+class AITeeth_OT_cloud_ortho_setup_credit(bpy.types.Operator):
+    """Submit file to get convex teeth"""
+    bl_idname = "ai_teeth.cloud_ortho_setup"
+    bl_label = "Get Ortho Setup"
 
-    credits_cost =  FloatProperty(name = 'Available Credits', default = 1.5)
+    credits_cost =  FloatProperty(name = 'Available Credits', default = 2.5)
     credits_avail = FloatProperty(name = 'Available Credits', default = 0.0)
     @classmethod
     def poll(cls, context):
-        if context.object == None: return False
-        if context.object.type != 'MESH': return
-        if len([ob for ob in bpy.data.objects if "tooth" in ob.data.name and 'Convex' not in ob.name and ob.select]) == 0: return False #no teeth to make convex
-        if len([ob for ob in bpy.context.scene.objects if ob.type == 'MESH' and 'Salience' in ob.data.vertex_colors]) == 0: return False  #no objectt to subtract
+        if len([ob for ob in bpy.data.objects if ob.type == 'MESH' and "Convex" in ob.name]) != 0: return False  #already existing convex teeth
+        if len([ob for ob in bpy.data.objects if ob.type == 'MESH' and "tooth" in ob.data.name]) == 0: return False #no teeth to make convex
         return True
 
     def invoke(self, context, event):
@@ -330,11 +334,6 @@ class AITeeth_OT_cloud_reduction_shell_credit(bpy.types.Operator):
         
         layout = self.layout
         
-        row = layout.row()
-        reduction_teeth = [ob for ob in bpy.data.objects if ob.type == 'MESH' and "tooth" in ob.data.name and 'Convex' not in ob.name and ob.select]
-        
-        row.label("You have %i teeth selected for reduction" % len(reduction_teeth))
-        
         if self.credits_avail == -1.0:
             row = layout.row()
             text = "Please visit https://d3tool.com/product/cloud-credit"
@@ -361,7 +360,7 @@ class AITeeth_OT_cloud_reduction_shell_credit(bpy.types.Operator):
         if self.credits_avail < self.credits_cost:
             bpy.ops.wm.url_open("INVOKE_DEFAULT", url = "https://d3tool.com/product/cloud-credit")
         else:
-            bpy.ops.ai_teeth.send_cloud_reduction_shell("INVOKE_DEFAULT")
+            bpy.ops.ai_teeth.send_ortho_setup("INVOKE_DEFAULT")
         
         #TODO, set up the modal operator
         return {'FINISHED'}
@@ -369,10 +368,11 @@ class AITeeth_OT_cloud_reduction_shell_credit(bpy.types.Operator):
 
 
 def register():
-    bpy.utils.register_class(AITeeth_OT_send_cloud_reduction_shell)
-    bpy.utils.register_class(AITeeth_OT_cloud_reduction_shell_credit)
+    bpy.utils.register_class(AITeeth_OT_cloud_ortho_setup_credit)
+    bpy.utils.register_class(AITeeth_OT_send_ortho_setup)
 
 
 def unregister():
-    bpy.utils.register_class(AITeeth_OT_send_cloud_reduction_shell)
-    bpy.utils.unregister_class(AITeeth_OT_cloud_reduction_shell_credit)
+    bpy.utils.register_class(AITeeth_OT_cloud_ortho_setup_credit)
+    bpy.utils.unregister_class(AITeeth_OT_send_ortho_setup)
+

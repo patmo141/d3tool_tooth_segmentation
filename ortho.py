@@ -368,7 +368,7 @@ class OPENDENTAL_OT_confirm_transforms_for_teeth (bpy.types.Operator):
         for ob in teeth:
             name = ob.name.split(' ')[0] + ' root_empty'
             axis = bpy.data.objects.get(name)
-            mx = axis.matrix_world
+            mx = axis.matrix_world.copy()
             rmx = mx.to_3x3().to_4x4()
             irmx = rmx.inverted()
             
@@ -379,12 +379,74 @@ class OPENDENTAL_OT_confirm_transforms_for_teeth (bpy.types.Operator):
             ob.data.transform(irmx)
             
             ob.matrix_world = Tmx * rmx * Rmx
-            
-            
-            
+            axis.matrix_world = mx  #because axis is a child of the tooth
         return {'FINISHED'}
     
+class OPENDENTAL_OT_empties_to_armature(bpy.types.Operator):
+    """Confirm tooth orientations"""
+    bl_idname = "d3ortho.empties_to_armature"
+    bl_label = "Empties to Armature"
+    bl_options = {'REGISTER','UNDO'}
     
+    
+    @classmethod
+    def poll(self,context):
+        return context.mode == 'OBJECT'
+    
+        
+    def execute(self, context):
+        
+        teeth = [ob for ob in bpy.data.objects if 'Convex' in ob.name]
+        
+        bpy.ops.object.select_all(action = 'DESELECT')
+        
+        arm_ob = bpy.data.objects.get('Roots')
+        
+        if not arm_ob:
+        
+            root_data = bpy.data.armatures.new('Roots')
+            arm_ob = bpy.data.objects.new('Roots',root_data)
+            context.scene.objects.link(arm_ob)
+            
+        arm_ob.select = True
+        context.scene.objects.active = arm_ob
+        bpy.ops.object.mode_set(mode = 'EDIT')
+        
+        for ob in teeth:
+            if ob.name + 'root' not in arm_ob.data.bones:
+                bpy.ops.armature.bone_primitive_add(name = ob.name.split(' ')[0] + ' root')
+            
+        
+        for ob in teeth:
+            e = context.scene.objects.get(ob.name.split(' ')[0] + ' root_empty')
+            b = arm_ob.data.edit_bones.get(ob.name.split(' ')[0] + ' root')
+            
+            if e != None and b != None:
+                b.transform(ob.matrix_world)
+                #b.transform(e.matrix_world) #this gets the local x,y,z in order
+                Z = e.matrix_world.to_quaternion() * Vector((0,0,-1))
+                #b.tail.xyz = e.location
+                #b.head.xyz = e.location - 16 * Z
+                b.head.xyz = ob.location
+                b.tail.xyz = ob.location - 16 * Z
+                
+                
+                b.head_radius = 1.5
+                b.tail_radius = 2.5
+                
+                e.empty_draw_type = 'PLAIN_AXES'
+                e.empty_draw_size = 10
+                #no let's keep the empty
+                #context.scene.objects.unlink(e)
+                #e.user_clear()
+                #bpy.data.objects.remove(e)
+            else:
+                print('missing bone or empty')
+                    
+        bpy.ops.object.mode_set(mode = 'OBJECT')
+            
+        return {'FINISHED'}
+            
 class OPENDENTAL_OT_setup_root_parenting(bpy.types.Operator):
     """Prepares model for gingival simulation"""
     bl_idname = "opendental.set_roots_parents"
@@ -655,10 +717,11 @@ def register():
     #bpy.utils.register_class(OPENDENTAL_OT_right_view)
     bpy.utils.register_class(OPENDENTAL_OT_add_bone_roots)
     #bpy.utils.register_class(OPENDENTAL_OT_fast_label_teeth)
-    #bpy.utils.register_class(OPENDENTAL_OT_adjust_roots)
+    bpy.utils.register_class(OPENDENTAL_OT_adjust_roots)
     bpy.utils.register_class(OPENDENTAL_OT_setup_root_parenting)
     bpy.utils.register_class(OPENDENTAL_OT_set_treatment_keyframe)
     bpy.utils.register_class(OPENDENTAL_OT_confirm_transforms_for_teeth)
+    bpy.utils.register_class(OPENDENTAL_OT_empties_to_armature)
 
     
     
@@ -673,7 +736,8 @@ def unregister():
     bpy.utils.unregister_class(OPENDENTAL_OT_setup_root_parenting)
     bpy.utils.unregister_class(OPENDENTAL_OT_set_treatment_keyframe)
     bpy.utils.unregister_class(OPENDENTAL_OT_confirm_transforms_for_teeth)
-    #bpy.utils.unregister_class(OPENDENTAL_OT_adjust_roots)
+    bpy.utils.unregister_class(OPENDENTAL_OT_empties_to_armature)
+    bpy.utils.unregister_class(OPENDENTAL_OT_adjust_roots)
 
 
     

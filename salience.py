@@ -587,7 +587,9 @@ class AITeeth_OT_cloud_process(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
+        
         if not context.object: return False
+        if context.object.data == None: return False
         if len(context.object.children) == 0: return False  #seeds
         if "Salience" in context.object.data.vertex_colors: return False #already did it
         return True

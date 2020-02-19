@@ -45,7 +45,7 @@ from .op_ai_teeth.ai_teeth import AITeeth_Polytrim
 from . import ortho
 from . import helper_ops
 from . import salience
-from .operators import pick_teeth, optimize_model, get_convex_teeth, get_reduction_shell, get_two_part_model
+from .operators import pick_teeth, optimize_model, get_convex_teeth, get_reduction_shell, get_two_part_model, get_ortho_setup, edit_axes
 
 
 class AISceneSettings(bpy.types.PropertyGroup):
@@ -185,7 +185,9 @@ def register():
     optimize_model.register()
     get_reduction_shell.register()
     get_two_part_model.register()
+    get_ortho_setup.register()
     ortho.register()
+    edit_axes.register()
     
     bpy.utils.register_class(AISceneSettings)
     bpy.types.Scene.ai_settings = bpy.props.PointerProperty(type = AISceneSettings)
@@ -202,6 +204,8 @@ def unregister():
     get_reduction_shell.unregister()
     get_two_part_model.unregister()
     ortho.unregister()
+    get_ortho_setup.unregister()
+    edit_axes.unregister()
     
     bpy.utils.unregister_class(AISceneSettings)
     del bpy.types.scene.ai_settings
