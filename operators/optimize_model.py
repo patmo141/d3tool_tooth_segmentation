@@ -13,7 +13,7 @@ class AITeeth_OT_optimize_model(bpy.types.Operator):
     
     max_edge_length = FloatProperty(name = 'Max Edge Length', description = 'Edges longer than this will be re-meshed', default = 0.5, min = .1 , max = 1.5)
     target_edge_length = FloatProperty(name = 'Target Edge Length',description = 'Long edges will be remeshed to this, usually smaller than Max Edge Length', default = 0.25, min = .1 , max = 1.5)
-    max_verts = IntProperty(default = 175000, description = 'Target number of vertices')
+    max_verts = IntProperty(default = 125000, description = 'Target number of vertices')
     
     
     @classmethod
