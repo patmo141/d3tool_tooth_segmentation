@@ -45,7 +45,7 @@ from .op_ai_teeth.ai_teeth import AITeeth_Polytrim
 from . import ortho
 from . import helper_ops
 from . import salience
-from .operators import pick_teeth, optimize_model, get_convex_teeth, get_reduction_shell, get_two_part_model, get_ortho_setup, edit_axes, keyframe_to_solid
+from .operators import pick_teeth, optimize_model, get_convex_teeth, get_reduction_shell, get_two_part_model, get_ortho_setup, edit_axes, keyframe_to_solid, composite_buttons
 
 
 class AISceneSettings(bpy.types.PropertyGroup):
@@ -163,8 +163,36 @@ class VIEW3D_PT_AITeeth(bpy.types.Panel):
         row.operator("ai_teeth.polytrim", text = "Interactive Assisted Segment")
         
         row = layout.row()
-        row.label('Premium/Cloud Features')
-
+        row.label('Ortho Pipeline')
+        
+         
+        row = layout.row()
+        row.operator("ai_teeth.cloud_ortho_setup")
+        
+        row = layout.row()
+        row.operator("d3ortho.adjust_axes")
+        
+        row = layout.row()
+        row.operator("opendental.confirm_tooth_orientations")
+        
+        row = layout.row()
+        row.operator("d3ortho.empties_to_armature")
+        
+        row = layout.row()
+        row.operator("opendental.set_roots_parents")
+        
+        row = layout.row()
+        row.operator("opendental.set_treatment_keyframe")
+        
+        
+        row = layout.row()
+        row.operator("d3ortho.keyframe_solid")
+        
+        
+        
+        row = layout.row()
+        row.label('Other Premium Features')
+        
         row = layout.row()
         row.operator("ai_teeth.cloud_convex_teeth")
         
@@ -189,6 +217,7 @@ def register():
     ortho.register()
     edit_axes.register()
     keyframe_to_solid.register()
+    composite_buttons.register()
     
     bpy.utils.register_class(AISceneSettings)
     bpy.types.Scene.ai_settings = bpy.props.PointerProperty(type = AISceneSettings)
@@ -208,6 +237,7 @@ def unregister():
     get_ortho_setup.unregister()
     edit_axes.unregister()
     keyframe_to_solid.unfregister()
+    composite_buttons.unregister()
     
     bpy.utils.unregister_class(AISceneSettings)
     del bpy.types.scene.ai_settings

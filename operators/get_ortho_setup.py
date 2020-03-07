@@ -239,6 +239,8 @@ class AITeeth_OT_send_ortho_setup(bpy.types.Operator):
                         context.scene.objects.link(ob)
                     if 'root' in ob.name and ob.name not in context.scene.objects:
                         context.scene.objects.link(ob)
+                    if 'Base Gingiva' in ob.name and ob.name not in context.scene.objects:
+                        context.scene.objects.link(ob)
                     
                 for ob in bpy.data.objects:
                     if ob.type == 'MESH' and "tooth" in ob.data.name and "Convex" not in ob.name:

@@ -480,7 +480,7 @@ class OPENDENTAL_OT_setup_root_parenting(bpy.types.Operator):
             
         context.scene.objects.active = arm_ob
         arm_ob.select = True
-        jaw_ob = bpy.data.objects.get('gingiva')    
+        jaw_ob = bpy.data.objects.get('Base Gingiva')
         #create a vertex group for every maxillary bone
         for bone in arm_ob.data.bones:
             #if bone.name.startswith('1') or bone.name.startswith('2'):
@@ -509,7 +509,7 @@ class OPENDENTAL_OT_setup_root_parenting(bpy.types.Operator):
                 mod.target = tooth
                 mod.vertex_group = bone.name
                 mod.proximity_mode = 'GEOMETRY'
-                mod.min_dist = 7 #4.5
+                mod.min_dist = 5 #4.5
                 mod.max_dist = 0
                 mod.falloff_type = 'SHARP' #'ICON_SPHERECURVE'
                 mod.show_expanded = False
@@ -612,16 +612,16 @@ class OPENDENTAL_OT_set_treatment_keyframe(bpy.types.Operator):
     
     def execute(self, context):
         #find obs
-        obs = []
-        for num in TOOTH_NUMBERS:
-            ob = context.scene.objects.get(str(num))
-            if ob != None and not ob.hide:
-                obs.append(ob)
-                continue
+        obs = [ob for ob in bpy.data.objects if 'Convex' in ob.name]
+        #for num in TOOTH_NUMBERS:
+        #    ob = context.scene.objects.get(str(num))
+        #    if ob != None and not ob.hide:
+        #        obs.append(ob)
+        #        continue
             
-            for ob in context.scene.objects:
-                if ob.name.startswith(str(num)) and not ob.hide:
-                    obs.append(ob)
+        #    for ob in context.scene.objects:
+        #        if ob.name.startswith(str(num)) and not ob.hide:
+        #            obs.append(ob)
         
         bpy.ops.object.select_all(action = 'DESELECT')
         for ob in obs:
@@ -631,7 +631,14 @@ class OPENDENTAL_OT_set_treatment_keyframe(bpy.types.Operator):
         if context.scene.keying_sets.active == None:
             bpy.ops.anim.keying_set_active_set(type='BUILTIN_KSI_LocRot')
             
-        bpy.ops.anim.keyframe_insert(type = 'BUILTIN_KSI_LocRot')      
+        bpy.ops.anim.keyframe_insert(type = 'BUILTIN_KSI_LocRot') 
+        
+        for ob in obs:
+            fcurves = ob.animation_data.action.fcurves
+            for fcurve in fcurves:
+                for kf in fcurve.keyframe_points:
+                    kf.interpolation = 'LINEAR'
+        
         return {'FINISHED'}
        
        

@@ -298,7 +298,7 @@ class AITeeth_OT_cloud_reduction_shell_credit(bpy.types.Operator):
     def poll(cls, context):
         if context.object == None: return False
         if context.object.type != 'MESH': return
-        if len([ob for ob in bpy.data.objects if "tooth" in ob.data.name and 'Convex' not in ob.name and ob.select]) == 0: return False #no teeth to make convex
+        if len([ob for ob in bpy.data.objects if ob.type == 'MESH' and "tooth" in ob.data.name and 'Convex' not in ob.name and ob.select]) == 0: return False #no teeth to make convex
         if len([ob for ob in bpy.context.scene.objects if ob.type == 'MESH' and 'Salience' in ob.data.vertex_colors]) == 0: return False  #no objectt to subtract
         return True
 

@@ -109,7 +109,6 @@ class D3Ortho_OT_adjust_axes(CookieCutter):
         root.hide_select = False
         root.select = True
         
-        
         self.axis_vis.parent = root
         self.axis_vis.matrix_world = root.matrix_world
         self.axis_vis.hide_select = False

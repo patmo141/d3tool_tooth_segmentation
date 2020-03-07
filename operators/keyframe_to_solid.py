@@ -22,9 +22,9 @@ def main(context, frame):
 
     start = time.time()
     #get the gingiva and teeth
-    gingiva = bpy.data.objects.get('gingiva')
+    gingiva = bpy.data.objects.get('Base Gingiva')
     teeth = [ob for ob in bpy.data.objects if 'Convex' in ob.name]
-
+    attachments = [ob for ob in bpy.data.objects if 'CB' in ob.name]
 
     bme_teeth = []
     
@@ -34,7 +34,7 @@ def main(context, frame):
     
     bme_teeth = []
     
-    for ob in teeth:
+    for ob in teeth + attachments:
         bme = bmesh.new()
         bme.from_object(ob, context.scene)
         bme.transform(ob.matrix_world)
@@ -44,15 +44,13 @@ def main(context, frame):
     unified_teeth = bmesh_join_list(bme_teeth)    
     bvh = BVHTree.FromBMesh(unified_teeth)
     
-    non_man_eds = [e for e in bme_gingiva.edges if len(e.link_faces) == 1]
-    non_man_verts = set()
-    for ed in non_man_eds:
-        non_man_verts.update(ed.verts[:])
+    
         
-    for v in non_man_verts:
+    for v in bme_gingiva.verts:
         loc, no, ind, d = bvh.find_nearest(v.co)
         
-        v.co = loc
+        if d < .25:
+            v.co = loc
         
     
     unified_model = bmesh_join_list([bme_gingiva, unified_teeth])
@@ -73,7 +71,7 @@ def main(context, frame):
     remeshed_model.free()
     
     finish = time.time()
-    print('made solide model in %f seconds' % (finish - start))
+    print('made solid model in %f seconds' % (finish - start))
     
     
     
