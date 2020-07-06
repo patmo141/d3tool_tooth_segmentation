@@ -15,7 +15,7 @@ from export_upload import upload_nonthreaded, download_nonthreaded, define_paths
 
 
 def ping_server(job_id):
-    url = "http://104.196.199.206:7777/api/job_details?job_id=" + job_id #1569930574014
+    url = "http://34.73.186.235:7777/api/job_details?job_id=" + job_id #1569930574014
     ret_json = json.loads(requests.get(url).text)
     return ret_json
 
@@ -97,7 +97,7 @@ class ModalCloudOperator(bpy.types.Operator):
             name = prefix + '_testing.blend'
             ret_val = upload_nonthreaded(server, location, name)
                  
-            job_submit_url =  "http://104.196.199.206:7777/api/blender_job?name={}&input={}".format(name, name)
+            job_submit_url =  "http://34.73.186.235:7777/api/blender_job?name={}&input={}".format(name, name)
             self.job_id = requests.get(job_submit_url).text
             self.file_name = name
             

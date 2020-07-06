@@ -117,7 +117,7 @@ def main(context):
 
 
 def ping_server(job_id):
-    url = "http://104.196.199.206:7777/api/job_details?job_id=" + job_id #1569930574014
+    url = "http://34.73.186.235:7777/api/job_details?job_id=" + job_id #1569930574014
     ret_json = json.loads(requests.get(url).text)
     return ret_json
     
@@ -315,7 +315,7 @@ class AITeeth_OT_send_two_part_model(bpy.types.Operator):
         if 'FAILED' in ret_val:
             return (None, None, 'FAILED')
               
-        job_submit_url =  "http://104.196.199.206:7777/api/blender_job?name={}&input={}&operation={}".format(name, name, 'two_part_model')    
+        job_submit_url =  "http://34.73.186.235:7777/api/blender_job?name={}&input={}&operation={}".format(name, name, 'two_part_model')    
         job_id = requests.get(job_submit_url).text
     
         return (job_id, name, 'SUCCESS')

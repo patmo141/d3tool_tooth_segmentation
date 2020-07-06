@@ -560,7 +560,7 @@ def dilate_erode(bme, selected_verts, dilations, erosions, dilate_first = True):
 #simple test operator   
 
 def ping_server(job_id):
-    url = "http://104.196.199.206:7777/api/job_details?job_id=" + job_id #1569930574014
+    url = "http://34.73.186.235:7777/api/job_details?job_id=" + job_id #1569930574014
     ret_json = json.loads(requests.get(url).text)
     return ret_json
     
@@ -736,7 +736,7 @@ class AITeeth_OT_cloud_process(bpy.types.Operator):
         if 'FAILED' in ret_val:
             return (None, None, 'FAILED')
               
-        job_submit_url =  "http://104.196.199.206:7777/api/blender_job?name={}&input={}&operation={}".format(name, name, 'bake_vertex_color')    
+        job_submit_url =  "http://34.73.186.235:7777/api/blender_job?name={}&input={}&operation={}".format(name, name, 'bake_vertex_color')    
         job_id = requests.get(job_submit_url).text
     
         return (job_id, name, 'SUCCESS')
