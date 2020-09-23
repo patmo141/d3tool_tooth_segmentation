@@ -86,8 +86,8 @@ class AITeethPreferences(AddonPreferences):
     loop_close_pxl_rad = IntProperty(name = 'Select Radius Pixel', default = 10, min = 3, max = 100)
 
     #Menu Colors
-    menu_bg_color = FloatVectorProperty(name="Menu Backgrounng Color", description="FLoating Menu color", min=0, max=1, default=(.3,.3,.3), subtype="COLOR")
-    menu_border_color = FloatVectorProperty(name="Menu Border Color", description="FLoating menu border colro", min=0, max=1, default=(.1,.1,.1), subtype="COLOR")
+    menu_bg_color = FloatVectorProperty(name="Menu Backgrounng Color", description="Floating Menu color", min=0, max=1, default=(.3,.3,.3), subtype="COLOR")
+    menu_border_color = FloatVectorProperty(name="Menu Border Color", description="Floating menu border color", min=0, max=1, default=(.1,.1,.1), subtype="COLOR")
     deact_button_color = FloatVectorProperty(name="Button Color", description="Deactivated button color", min=0, max=1, default=(.5,.5,.5), subtype="COLOR")
     act_button_color = FloatVectorProperty(name="Active Button Color", description="Activated button color", min=0, max=1, default=(.2,.2,1), subtype="COLOR")
     
