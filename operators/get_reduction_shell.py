@@ -244,18 +244,18 @@ def make_reduction_shells(context, depth):
                 bpy.context.scene.objects.link(shell_ob)
         
         #TODO NUmpy
-        no = Vector((0,0,0))
-        A = 0.0
-        for tooth in teeth:
-            imx_ob = tooth.matrix_world.inverted()
-            mx_norm = imx_ob.transposed().to_3x3()
-            for f in tooth.data.polygons:
-                a = f.area
-                n = f.normal
-                no += a * mx_norm * n
-                A += a
+        #no = Vector((0,0,0))
+        #A = 0.0
+        #for tooth in teeth:
+        #    imx_ob = tooth.matrix_world.inverted()
+        #    mx_norm = imx_ob.transposed().to_3x3()
+        #    for f in tooth.data.polygons:
+        #        a = f.area
+        #        n = f.normal
+        #        no += a * mx_norm * n
+        #        A += a
                 
-        plane_no = 1/A * no
+        #plane_no = 1/A * no
         
             
         convex_teeth = []
@@ -290,8 +290,6 @@ def make_reduction_shells(context, depth):
             
         kd_convex.balance()
     
-        
-        
         for i, bme in enumerate(bmes_convex):
             to_delete = []
             
@@ -312,7 +310,7 @@ def make_reduction_shells(context, depth):
                     _, _, _, d1 = bvhs[n1].find_nearest(v.co)
                     _, _, _, d2 = bvhs[n2].find_nearest(v.co)
         
-                    if d1 > .45 and d2 > .45 and abs(v.normal.dot(plane_no)) > .45:  #Let's see
+                    if d1 > .45 and d2 > .45:# and abs(v.normal.dot(plane_no)) > .45:  #Let's see
                         to_delete.append(v)
                 
                 print('deleting %i out of %i verts' % (len(to_delete), len(bme.verts)))

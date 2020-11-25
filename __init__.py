@@ -174,42 +174,42 @@ class VIEW3D_PT_AITeeth(bpy.types.Panel):
             row.operator( "aiteeth.segment_lower_teeth", text = "Segment Lower Teeth")
 
         
-        row = layout.row()
-        row.label('Tooth Animation Pipeline')
+        #row = layout.row()
+        #row.label('Tooth Animation Pipeline')
         
          
-        row = layout.row()
-        row.operator("ai_teeth.cloud_ortho_setup")
+        #row = layout.row()
+        #row.operator("ai_teeth.cloud_ortho_setup")
         
-        row = layout.row()
-        row.operator("d3ortho.adjust_axes")
+        #row = layout.row()
+        #row.operator("d3ortho.adjust_axes")
         
-        row = layout.row()
-        row.operator("opendental.confirm_tooth_orientations")
+        #row = layout.row()
+        #row.operator("opendental.confirm_tooth_orientations")
         
-        row = layout.row()
-        row.operator("d3ortho.empties_to_armature")
+        #row = layout.row()
+        #row.operator("d3ortho.empties_to_armature")
         
-        row = layout.row()
-        row.operator("opendental.set_roots_parents")
+        #row = layout.row()
+        #row.operator("opendental.set_roots_parents")
         
-        row = layout.row()
-        row.operator("opendental.set_movement_keyframe")
+        #row = layout.row()
+        #row.operator("opendental.set_movement_keyframe")
         
         
-        row = layout.row()
-        row.operator("d3ortho.keyframe_solid")
+        #row = layout.row()
+        #row.operator("d3ortho.keyframe_solid")
         
         
         
         row = layout.row()
         row.label('Modelling Operations')
         
-        row = layout.row()
-        row.operator("ai_teeth.cloud_convex_teeth")
+        #row = layout.row()
+        #row.operator("ai_teeth.cloud_convex_teeth")
         
-        row = layout.row()
-        row.operator("ai_teeth.cloud_two_part_model")
+        #row = layout.row()
+        #row.operator("ai_teeth.cloud_two_part_model")
         
         row = layout.row()
         row.operator("ai_teeth.reduction_shell")
@@ -217,8 +217,9 @@ class VIEW3D_PT_AITeeth(bpy.types.Panel):
         if hasattr(bpy.types, "D3SplintCloudSave"):
             row = layout.row()
             row.operator("d3splint.save_cloud_blend")
-    
-        cloud_export_stl
+        row = layout.row()
+        row.operator("d3ortho.export_stl", text = "Save Selected")
+        
 def register(): 
     bpy.utils.register_class(AITeethPreferences)
     bpy.utils.register_class(AITeeth_Polytrim)
