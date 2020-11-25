@@ -9,7 +9,6 @@ http://www.mhsl.uab.edu/dt/2013/Mouritsen_uab_0005M_10978.pdf
 
 The salience value chosen for this implementation is novel and not yet published.
 
-
 The idea of using topological operators was described in this 2000 paper by
 Christian Rossl, Leif Kobbelt, Hans-Peter Seidel
 Max-Planck-Institut fur Informatik, Computer Graphics Group
@@ -45,7 +44,83 @@ from .subtrees.point_picker.functions.common import showErrorMessage
 
 from concurrent.futures import ThreadPoolExecutor
 
- 
+def bake_salience_object(context, ob):
+
+    current_scene = context.scene
+
+    #make a dummy scene, Salience bakes all objects
+    #need a lonely scene
+    if "Salience" not in bpy.data.scenes:
+        ao_scene = bpy.data.scenes.new("Salience")
+    else:
+        ao_scene = bpy.data.scenes.get("Salience")
+
+    context.screen.scene = ao_scene
+    for obj in ao_scene.objects:
+        ao_scene.objects.unlink(obj)        
+    ao_scene.objects.link(ob)
+
+    if "Salience" not in bpy.data.worlds:
+        old_worlds = [w for w in bpy.data.worlds]
+        bpy.ops.world.new()
+
+        new_worlds = [w for w in bpy.data.worlds if w not in old_worlds]
+        world = new_worlds[0]
+        world.name = "Salience"
+        world = bpy.data.worlds["Salience"]
+    else:
+        world = bpy.data.worlds.get("Salience")
+
+    #TODO, get theses values from the scene AO setings that shows the AO preview
+    ao_scene.world = world
+
+    world.light_settings.use_ambient_occlusion = True
+    world.light_settings.ao_factor = 5.0
+    world.light_settings.ao_blend_type = 'MULTIPLY'
+
+    world.light_settings.samples = 10
+    world.light_settings.use_falloff = True
+    world.light_settings.falloff_strength = .5
+    world.light_settings.distance = .5
+
+    world.light_settings.use_environment_light = True
+    world.light_settings.environment_energy = 1.0
+
+
+    if "Salience" not in ob.data.vertex_colors:
+        vcol = ob.data.vertex_colors.new(name = "Salience")
+    else:
+        vcol = ob.data.vertex_colors.get("Salience")
+
+
+    if "Salience" not in bpy.data.materials:
+        mat = bpy.data.materials.new("Salience")
+        mat.use_shadeless = True
+        mat.use_vertex_color_paint = True
+    else:
+        mat = bpy.data.materials.get("Salience")
+        mat.use_shadeless = True
+        mat.use_vertex_color_paint = True
+
+    if "Salience" not in ob.data.materials:
+        ob.data.materials.append(mat)
+
+    ob.material_slots[0].material = mat
+
+    ao_scene.render.bake_type = "AO"
+    ao_scene.render.use_bake_to_vertex_color = True
+    ao_scene.render.use_bake_normalize = True
+
+    ao_scene.objects.active = ob
+    ob.select = True
+    bpy.ops.object.bake_image()
+
+    ob.select = False
+    #put the active scene back
+    context.screen.scene = current_scene
+   
+    
+    
 def pick_verts_by_salient_color(obj, min_threshold = 0.00, max_threshold = .95):
     """Paints a single vertex where vert is the index of the vertex
     and color is a tuple with the RGB values."""
@@ -596,9 +671,6 @@ class AITeeth_OT_cloud_process(bpy.types.Operator):
         
     def invoke(self, context, event):
         
-        
-        
-        
         obs = [ob for ob in bpy.data.objects if ob.type == 'MESH']
         
         
@@ -782,6 +854,46 @@ class AITeeth_OT_cloud_process(bpy.types.Operator):
         
         for child in children:
             child.parent = ob
+            
+            
+class AITeeth_OT_pre_process(bpy.types.Operator):
+    """Pre process feature detection"""
+    bl_idname = "ai_teeth.preprocess_model"
+    bl_label = "Pre-Process Salience"
+
+    _timer = None
+
+    @classmethod
+    def poll(cls, context):
+
+        return True
+        
+    def execute(self, context):
+        
+        
+        obs = []
+        
+        upper_jaw = bpy.data.objects.get(context.scene.d3ortho_upperjaw)
+        lower_jaw = bpy.data.objects.get(context.scene.d3ortho_lowerjaw)
+        
+        if upper_jaw:
+            obs.append(upper_jaw)
+        if lower_jaw:
+            obs.append(lower_jaw)
+            
+            
+        max_ob = max(obs, key = lambda x: len(x.data.vertices))
+        if len(max_ob.data.vertices) > 250000:
+            showErrorMessage('Model has too many vertices!  Decimate to below 250,000 verts')
+            return {'CANCELLED'}
+        
+        for ob in obs:
+            ob.hide = False
+            ob.select = True
+            context.scene.objects.active = ob
+            bake_salience_object(context, ob)
+            
+        return {'FINISHED'}
         
             
                 
@@ -799,7 +911,7 @@ class AITeeth_OT_select_verts_by_salience_color(bpy.types.Operator):
             if context.mode != 'OBJECT':
                 bpy.ops.object.mode_set(mode = 'OBJECT')
             
-            pick_verts_by_salience_color(context.object,min_threshold = self.min_threshold, max_threshold = self.max_threshold)
+            pick_verts_by_salient_color(context.object,min_threshold = self.min_threshold, max_threshold = self.max_threshold)
             
         return {'FINISHED'}
 
@@ -976,7 +1088,7 @@ class AITeeth_OT_partition_and_color(bpy.types.Operator):
     
 def register():
     #bpy.utils.register_class(AI_OT_preprocess)
-    bpy.utils.register_class(AITeeth_OT_cloud_process)
+    bpy.utils.register_class(AITeeth_OT_pre_process)
     #bpy.utils.register_class(AITeeth_OT_select_verts_by_salience_color)
     #bpy.utils.register_class(AITeeth_OT_remove_small_parts_selection)
     #bpy.utils.register_class(AITeeth_OT_dilate_erode_selection)
@@ -985,7 +1097,7 @@ def register():
     
 def unregister():
     #bpy.utils.unregister_class(AI_OT_preprocess)
-    bpy.utils.unregister_class(AITeeth_OT_cloud_process)
+    bpy.utils.unregister_class(AITeeth_OT_pre_process)
     #bpy.utils.unregister_class(AITeeth_OT_select_verts_by_salience_color)
     #bpy.utils.unregister_class(AITeeth_OT_remove_small_parts_selection)
     #bpy.utils.unregister_class(AITeeth_OT_dilate_erode_selection)

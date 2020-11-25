@@ -124,13 +124,12 @@ def vdb_remesh(
 
     def _write(gr):
         fit = filter_iterations if filter_iterations > 0 else 0
-        if platform.system() == 'Darwin':
-            for _ in range(fit):
-                gr.gaussian(filter_param, filter_width)
-            verts, tris, quads = gr.convertToPolygons(iso, adapt)
+        
+        for _ in range(fit):
+            gr.gaussian(filter_param, filter_width)
+        verts, tris, quads = gr.convertToPolygons(iso, adapt)
 
-        else:
-            verts, tris, quads = gr.convertToComplex(iso, adapt, fit, filter_width, filter_param)
+
         return (verts, tris, quads)
 
     return (_write(grid), grid if saved_grid == None else saved_grid)

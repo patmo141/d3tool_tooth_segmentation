@@ -23,9 +23,9 @@ class AITeeth_Polytrim(AITeeth_States, AITeeth_UI_Init, AITeeth_UI_Tools, AITeet
     ''' Cut Mesh Polytrim Modal Editor '''
     ''' Note: the functionality of this operator is split up over multiple base classes '''
 
-    operator_id    = "ai_teeth.polytrim"    # operator_id needs to be the same as bl_idname
+    operator_id    = "aiteeth.polytrim"    # operator_id needs to be the same as bl_idname
                                             # important: bl_idname is mangled by Blender upon registry :(
-    bl_idname      = "ai_teeth.polytrim"
+    bl_idname      = "aiteeth.polytrim"
     bl_label       = "AI Tooth Segmentation"
     bl_space_type  = 'VIEW_3D'
     bl_region_type = 'TOOLS'
@@ -111,6 +111,12 @@ class AITeeth_Polytrim(AITeeth_States, AITeeth_UI_Init, AITeeth_UI_Tools, AITeet
         #scene.tool_settings.sculpt.use_symmetry_z = False
         #bpy.ops.brush.curve_preset(shape = 'MAX')
         
+        for ob in bpy.data.objects:
+            if ob != self.context.object:
+                ob.hide = True
+            else:
+                ob.hide = False
+                
         #need to inject this color layer and make active before generating bmesh makes it a lot easier
         mesh = self.context.object.data
         if "patches" not in mesh.vertex_colors:

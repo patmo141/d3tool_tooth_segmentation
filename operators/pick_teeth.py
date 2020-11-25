@@ -25,10 +25,61 @@ upper_perm = ['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15',
 upper_prim = ['A','B','C','D','E','F','G','H','I','J']
 lower_perm = ['17','18','19','20','21','22','23','24','25','26','27','28','29','30','31','32']
 lower_prim = ['K','L','M','N','O','P','Q','R','S','T']
-
-
+  
+class AITEETH_OT_label_mandibular_teeth(bpy.types.Operator):
+    """ Click on the desired teeth"""
+    bl_idname = "aiteeth.mark_lower_tooth_locations"
+    bl_label = "AI Mark Lower Tooth Locations"
+    bl_description = "Indicate points to identify each tooth"
+    
+    @classmethod
+    def poll(cls, context):
+        if context.scene.d3ortho_lowerjaw in bpy.data.objects:
+            return True
         
-class AITEETH_OT_label_maxillary_teeth(VIEW3D_OT_points_picker):
+        return False
+    
+    
+    def execute(self,context):
+        
+        
+        ob = bpy.data.objects.get(context.scene.d3ortho_lowerjaw)
+        
+        context.scene.objects.active = ob
+        ob.select = True
+        ob.hide = False
+        
+        bpy.ops.aiteeth.mark_tooth_locations("INVOKE_DEFAULT")
+        
+        return {'FINISHED'}
+    
+class AITEETH_OT_label_maxillary_teeth(bpy.types.Operator):
+    """ Click on the desired teeth"""
+    bl_idname = "aiteeth.mark_upper_tooth_locations"
+    bl_label = "AI Mark Upper Tooth Locations"
+    bl_description = "Indicate points to identify each tooth"
+    
+    @classmethod
+    def poll(cls, context):
+        if context.scene.d3ortho_upperjaw in bpy.data.objects:
+            return True
+        
+        return False
+    
+    
+    def execute(self,context):
+        
+        
+        ob = bpy.data.objects.get(context.scene.d3ortho_upperjaw)
+        
+        context.scene.objects.active = ob
+        ob.select = True
+        
+        bpy.ops.aiteeth.mark_tooth_locations("INVOKE_DEFAULT")
+        
+        return {'FINISHED'}
+        
+class AITEETH_OT_label_teeth(VIEW3D_OT_points_picker):
     """ Click on the desired teeth"""
     bl_idname = "aiteeth.mark_tooth_locations"
     bl_label = "AI Mark Tooth Locations"
@@ -42,19 +93,28 @@ class AITEETH_OT_label_maxillary_teeth(VIEW3D_OT_points_picker):
         
         if not context.object: return False
         
-        return True
+        if context.object.name == context.scene.d3ortho_upperjaw: return True
+        if context.object.name == context.scene.d3ortho_lowerjaw: return True
+        
+        return False
 
     
     def start_pre(self):
         #create a container for the points
         
-        self.seg_type = 'MAX_PERM'  #ENUM IN "MAX_PERM", "MAX_PRIM", "MAX_MIXED", "MAND_PERM", "MAND_PRIM", "MAND_MIXED"
+        if bpy.context.object.name == bpy.context.scene.d3ortho_upperjaw:
+            self.seg_type = 'MAX_PERM'
         
+        elif bpy.context.object.name == bpy.context.scene.d3ortho_lowerjaw:
+            self.seg_type = 'MAND_PERM'
+            
         self.build_labels()
         
         for ob in bpy.data.objects:
             if ob != bpy.context.object:
                 ob.hide = True
+                
+        bpy.context.object.hide = False
         pass
 
     def build_labels(self):
@@ -87,9 +147,8 @@ class AITEETH_OT_label_maxillary_teeth(VIEW3D_OT_points_picker):
         mx = bpy.context.object.matrix_world
         imx = mx.inverted()
         
-        name = "seed" + bpy.context.object.name 
-        if len(name) > 10:
-            name = name[0:10]
+        name = "seed" + self.seg_type
+
             
         if name in bpy.data.objects:
             container = bpy.data.objects.get(name)
@@ -192,14 +251,11 @@ class AITEETH_OT_label_maxillary_teeth(VIEW3D_OT_points_picker):
         mx = bpy.context.object.matrix_world
         imx = mx.inverted()
         
-        name = "seed" + bpy.context.object.name 
+        name = name = "seed" + self.seg_type
         
         bme = bmesh.new()
         bme.verts.ensure_lookup_table()
-        
-        if len(name) > 10:
-            name = name[0:10]
-            
+       
         if name in bpy.data.objects:
             container = bpy.data.objects.get(name)
             container_mesh = container.data
@@ -293,8 +349,12 @@ class AITEETH_OT_label_maxillary_teeth(VIEW3D_OT_points_picker):
         
         
 def register():
+    bpy.utils.register_class(AITEETH_OT_label_teeth)
     bpy.utils.register_class(AITEETH_OT_label_maxillary_teeth)
+    bpy.utils.register_class(AITEETH_OT_label_mandibular_teeth)
     
      
 def unregister():
-    bpy.utils.unregister_class(AITEETH_OT_label_maxillary_teeth)
+    bpy.utils.unregister_class(AITEETH_OT_label_teeth)
+    bpy.utils.register_class(AITEETH_OT_label_maxillary_teeth)
+    bpy.utils.register_class(AITEETH_OT_label_mandibular_teeth)

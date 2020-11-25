@@ -606,8 +606,8 @@ class OPENDENTAL_OT_adjust_roots(bpy.types.Operator):
     
 class OPENDENTAL_OT_set_treatment_keyframe(bpy.types.Operator):
     """Sets a treatment stage at this frame"""
-    bl_idname = "opendental.set_treatment_keyframe"
-    bl_label = "Set Treatment Keyframe"
+    bl_idname = "opendental.set_movement_keyframe"
+    bl_label = "Set Movement Keyframe"
     bl_options = {'REGISTER','UNDO'}
     
     def execute(self, context):

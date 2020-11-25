@@ -860,12 +860,12 @@ class AITeeth_UI_Tools():
         seed_labels = dict()
         
         #silly naming convention from pick points operator, see "pick_teeth.py"
-        name = "seed" + self.context.object.name 
-        if len(name) > 10:
-            name = name[0:10]
+        
+        obs = [ob for ob in bpy.context.object.children if "seed" in ob.name]
     
-        if name in bpy.data.objects:  #make sure the seed object exists
-            container = bpy.data.objects.get(name)
+        
+        if len(obs):  #make sure the seed object exists
+            container = obs[0]
             container_mesh = container.data
         
             bme = bmesh.new()
@@ -2458,8 +2458,12 @@ class AITeeth_UI_Tools():
                     small_islands.append(isl)
                     
             new_bme = new_bmesh_from_bmelements(final_gingiva)
-                
-            name = 'gingiva'
+            
+            if bpy.context.object.name == bpy.context.scene.d3ortho_upperjaw: 
+                name = 'Upper Gingiva'
+            elif bpy.context.object.name == bpy.context.scene.d3ortho_lowerjaw: 
+                name = 'Lower Gingiva'
+ 
             new_me = bpy.data.meshes.new(name)
             new_ob = bpy.data.objects.new(name, new_me)
             new_ob.matrix_world = self.net_ui_context.mx

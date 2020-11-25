@@ -45,7 +45,7 @@ from .op_ai_teeth.ai_teeth import AITeeth_Polytrim
 from . import ortho
 from . import helper_ops
 from . import salience
-from .operators import pick_teeth, optimize_model, get_convex_teeth, get_reduction_shell, get_two_part_model, get_ortho_setup, edit_axes, keyframe_to_solid, composite_buttons
+from .operators import cloud_export_stl, pick_teeth, segment_teeth, optimize_model, get_convex_teeth, get_reduction_shell, get_two_part_model, get_ortho_setup, edit_axes, keyframe_to_solid, composite_buttons
 
 
 class AISceneSettings(bpy.types.PropertyGroup):
@@ -152,18 +152,30 @@ class VIEW3D_PT_AITeeth(bpy.types.Panel):
         row = layout.row()
         row.operator("import_mesh.stl", text="Import Model")
         row = layout.row()
-        row.operator("ai_teeth.anonymize_names", text = "Anonymize Name")
+        row.prop_search(context.scene, "d3ortho_upperjaw", context.scene, "objects")
+        row = layout.row()
+        row.prop_search(context.scene, "d3ortho_lowerjaw", context.scene, "objects")
+        
         row = layout.row()
         row.operator("ai_teeth.optimize_model", text = "Optimize Mesh")
         row = layout.row()
-        row.operator("aiteeth.mark_tooth_locations", text = 'Indicate Teeth')
+        row.operator("aiteeth.mark_upper_tooth_locations", text = 'Indicate Upper Teeth')
         row = layout.row()
-        row.operator("ai_teeth.cloud_preprocess_model", text = "Cloud Preprocess Model")
+        row.operator("aiteeth.mark_lower_tooth_locations", text = 'Indicate Lower Teeth')
         row = layout.row()
-        row.operator("ai_teeth.polytrim", text = "Interactive Assisted Segment")
+        row.operator("ai_teeth.preprocess_model", text = "Preprocess Model(s)")
+        
+        
+        if context.scene.d3ortho_upperjaw != '':
+            row = layout.row()
+            row.operator( "aiteeth.segment_upper_teeth", text = "Segment Upper Teeth")
+        if context.scene.d3ortho_lowerjaw != '':
+            row = layout.row()
+            row.operator( "aiteeth.segment_lower_teeth", text = "Segment Lower Teeth")
+
         
         row = layout.row()
-        row.label('Ortho Pipeline')
+        row.label('Tooth Animation Pipeline')
         
          
         row = layout.row()
@@ -182,7 +194,7 @@ class VIEW3D_PT_AITeeth(bpy.types.Panel):
         row.operator("opendental.set_roots_parents")
         
         row = layout.row()
-        row.operator("opendental.set_treatment_keyframe")
+        row.operator("opendental.set_movement_keyframe")
         
         
         row = layout.row()
@@ -191,7 +203,7 @@ class VIEW3D_PT_AITeeth(bpy.types.Panel):
         
         
         row = layout.row()
-        row.label('Other Premium Features')
+        row.label('Modelling Operations')
         
         row = layout.row()
         row.operator("ai_teeth.cloud_convex_teeth")
@@ -200,8 +212,13 @@ class VIEW3D_PT_AITeeth(bpy.types.Panel):
         row.operator("ai_teeth.cloud_two_part_model")
         
         row = layout.row()
-        row.operator("ai_teeth.cloud_reduction_shell")
+        row.operator("ai_teeth.reduction_shell")
+        
+        if hasattr(bpy.types, "D3SplintCloudSave"):
+            row = layout.row()
+            row.operator("d3splint.save_cloud_blend")
     
+        cloud_export_stl
 def register(): 
     bpy.utils.register_class(AITeethPreferences)
     bpy.utils.register_class(AITeeth_Polytrim)
@@ -210,8 +227,11 @@ def register():
     helper_ops.register()
     get_convex_teeth.register()
     pick_teeth.register()
+    segment_teeth.register()
     optimize_model.register()
     get_reduction_shell.register()
+    cloud_export_stl.register()
+    
     get_two_part_model.register()
     get_ortho_setup.register()
     ortho.register()
@@ -221,6 +241,9 @@ def register():
     
     bpy.utils.register_class(AISceneSettings)
     bpy.types.Scene.ai_settings = bpy.props.PointerProperty(type = AISceneSettings)
+    bpy.types.Scene.d3ortho_upperjaw =  bpy.props.StringProperty(name = "Upper Model", description = "Set the working dental model.")
+    bpy.types.Scene.d3ortho_lowerjaw =  bpy.props.StringProperty(name = "Lower Model", description = "Set the working dental model.")
+    
     
 def unregister():
     bpy.utils.unregister_class(AITeethPreferences)
@@ -229,10 +252,14 @@ def unregister():
     salience.unregister()
     helper_ops.unregister()
     pick_teeth.unregister()
+    segment_teeth.unregister()
     optimize_model.unregister()
     get_convex_teeth.unregister()
     get_reduction_shell.unregister()
+    cloud_export_stl.unregister()
     get_two_part_model.unregister()
+    
+    
     ortho.unregister()
     get_ortho_setup.unregister()
     edit_axes.unregister()
@@ -240,4 +267,5 @@ def unregister():
     composite_buttons.unregister()
     
     bpy.utils.unregister_class(AISceneSettings)
-    del bpy.types.scene.ai_settings
+    del bpy.types.Scene.ai_settings
+    del bpy.types.Scene.d3ortho_upperjaw

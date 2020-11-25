@@ -1,5 +1,13 @@
 from .common.utils import get_settings
 
+upper_perm = ['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16']
+upper_prim = ['A','B','C','D','E','F','G','H','I','J']
+lower_perm = ['17','18','19','20','21','22','23','24','25','26','27','28','29','30','31','32']
+lower_prim = ['K','L','M','N','O','P','Q','R','S','T']
+
+
+upper_teeth = set(upper_perm + upper_prim)
+lower_teeth = set(lower_perm + lower_prim)
 
 univ_to_FDI = {}
 univ_to_FDI['1'] = '18'
@@ -96,3 +104,6 @@ def data_tooth_label(tooth_label):
     prefs = get_settings()
     if prefs.tooth_system == 'FDI':
         return fdi_to_uni(tooth_label)
+    
+    else:
+        return tooth_label
