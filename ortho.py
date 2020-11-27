@@ -171,7 +171,7 @@ class OPENDENTAL_OT_add_bone_roots(bpy.types.Operator):
         bpy.ops.object.mode_set(mode = 'EDIT')
         
         for ob in self.units:
-            e = context.scene.objects.get(ob.name.split(' ')[0] + ' root_empty')
+            e = context.scene.objects.get(ob.name.split(' ')[0] + '_root_empty')
             b = arm_ob.data.edit_bones.get(ob.name.split(' ')[0] + ' root')
             
             if e != None and b != None:
@@ -366,7 +366,7 @@ class OPENDENTAL_OT_confirm_transforms_for_teeth (bpy.types.Operator):
         teeth = [ob for ob in bpy.data.objects if 'Convex' in ob.name]
         
         for ob in teeth:
-            name = ob.name.split(' ')[0] + ' root_empty'
+            name = ob.name.split(' ')[0] + '_root_empty'
             axis = bpy.data.objects.get(name)
             mx = axis.matrix_world.copy()
             rmx = mx.to_3x3().to_4x4()
@@ -416,9 +416,9 @@ class OPENDENTAL_OT_empties_to_armature(bpy.types.Operator):
             if ob.name + 'root' not in arm_ob.data.bones:
                 bpy.ops.armature.bone_primitive_add(name = ob.name.split(' ')[0] + ' root')
             
-        
+        bpy.ops.armature.bone_primitive_add(name = "Non Movable")
         for ob in teeth:
-            e = context.scene.objects.get(ob.name.split(' ')[0] + ' root_empty')
+            e = context.scene.objects.get(ob.name.split(' ')[0] + '_root_empty')
             b = arm_ob.data.edit_bones.get(ob.name.split(' ')[0] + ' root')
             
             if e != None and b != None:
@@ -446,7 +446,112 @@ class OPENDENTAL_OT_empties_to_armature(bpy.types.Operator):
         bpy.ops.object.mode_set(mode = 'OBJECT')
             
         return {'FINISHED'}
+
+
+def link_ob_to_bone(jaw_ob, arm_ob):
+    #jaw_ob = bpy.data.objects.get('Base Gingiva')
+    #create a vertex group for every maxillary bone
+    for bone in arm_ob.data.bones:
+        #if bone.name.startswith('1') or bone.name.startswith('2'):
+        #    jaw_ob = max_ob
+        #else:
+        #    jaw_ob = man_ob
+        #TODO clean this up    
+        
+        
+        if bone.name not in jaw_ob.vertex_groups:
+            vg = jaw_ob.vertex_groups.new(name = bone.name)
+        else:
+            vg = jaw_ob.vertex_groups[bone.name]
+        #make all members, weight at 0    
+        vg.add([i for i in range(0,len(jaw_ob.data.vertices))], 0, type = 'REPLACE')
             
+        tooth = bpy.context.scene.objects.get(bone.name.split(' ')[0] + ' Convex')
+        if tooth == None: continue
+        
+        
+        if tooth.name+'_prox' in jaw_ob.modifiers:
+            mod = jaw_ob.modifiers.get(tooth.name + '_prox')
+        else:
+            mod = jaw_ob.modifiers.new(tooth.name + '_prox', 'VERTEX_WEIGHT_PROXIMITY')
+            
+        mod.target = tooth
+        mod.vertex_group = bone.name
+        mod.proximity_mode = 'GEOMETRY'
+        mod.min_dist = 5.0 #4.5
+        mod.max_dist = 0
+        mod.falloff_type = 'SHARP' #'SMOOTH' #'SHARP' #'ICON_SPHERECURVE'
+        mod.show_expanded = False
+        #mod.mask_constant = .8  #Try this?
+        
+        pbone = arm_ob.pose.bones[bone.name]
+        
+        if 'Child Of' in pbone.constraints:
+            cons = pbone.constraints['Child Of']
+            cons.target = tooth
+            #cons.use_rotation_z = False
+        else:
+            cons = pbone.constraints.new(type = 'CHILD_OF')
+            cons.target = tooth
+                
+            arm_ob.data.bones.active = pbone.bone
+            bone.select = True
+            bpy.ops.object.mode_set(mode = 'POSE')
+            
+            context_copy = bpy.context.copy()
+            context_copy["constraint"] = pbone.constraints["Child Of"]    
+            bpy.ops.constraint.childof_set_inverse(context_copy, constraint="Child Of", owner='BONE')
+            bpy.ops.object.mode_set(mode = 'OBJECT')
+            
+            cons2 = pbone.constraints.new(type = 'LIMIT_ROTATION')
+            cons2.owner_space = 'LOCAL'
+            cons2.use_limit_y = True
+            cons2.min_y = -3 * math.pi/180
+            cons2.max_y = 3 * math.pi/180
+    
+    if "Non Movable" not in jaw_ob.vertex_groups:
+        vg = jaw_ob.vertex_groups.new(name = "Non Movable")
+    else:
+        vg = jaw_ob.vertex_groups.get('Non Movable')
+    vg.add([i for i in range(0,len(jaw_ob.data.vertices))], 0, type = 'REPLACE')
+    
+    if "Non Movable" in jaw_ob.modifiers:
+            mod = jaw_ob.modifiers.get("Non Movable")
+    else:
+        mod = jaw_ob.modifiers.new("Non MOvable", 'VERTEX_WEIGHT_PROXIMITY')
+        
+    mod.target = bpy.data.objects.get('Teeth Subtract')
+    mod.vertex_group = bone.name
+    mod.proximity_mode = 'GEOMETRY'
+    mod.min_dist = 0.0 #4.5
+    mod.max_dist = 7.0
+    mod.falloff_type = 'SHARP' #'SMOOTH' #'SHARP' #'ICON_SPHERECURVE'
+    mod.show_expanded = False
+    
+        
+    
+    #apply the prox mods
+    old_me = jaw_ob.data
+    me = jaw_ob.to_mesh(bpy.context.scene, apply_modifiers = True, settings = 'PREVIEW')
+    jaw_ob.modifiers.clear()
+    jaw_ob.data = me
+    bpy.data.meshes.remove(old_me)
+    
+    if 'Armature' in jaw_ob.modifiers:
+        mod = jaw_ob.modifiers['Armature']
+        jaw_ob.modifiers.remove(mod)
+    mod = jaw_ob.modifiers.new('Armature', type = 'ARMATURE')
+    mod.object = arm_ob
+    mod.use_vertex_groups = True  
+    
+def apply_mods(ob):
+    
+    me = ob.to_mesh(bpy.context.scene, apply_modifiers = True, settings = 'PREVIEW')
+    old_data = ob.data
+    ob.modifiers.clear()
+    ob.data = me
+    bpy.data.meshes.remove(old_data)
+                    
 class OPENDENTAL_OT_setup_root_parenting(bpy.types.Operator):
     """Prepares model for gingival simulation"""
     bl_idname = "opendental.set_roots_parents"
@@ -463,113 +568,28 @@ class OPENDENTAL_OT_setup_root_parenting(bpy.types.Operator):
         #make sure we don't mess up any animations!
         context.scene.frame_set(0)
         
-        max_ob = context.scene.objects.get('UpperJaw')
-        man_ob = context.scene.objects.get('LowerJaw')
+        max_ob = bpy.data.objects.get(bpy.context.scene.d3ortho_upperjaw)
+        mand_ob = bpy.data.objects.get(bpy.context.scene.d3ortho_lowerjaw)
         arm_ob = context.scene.objects.get('Roots')
-        
-        if not self.link_to_cast:
-            max_ob = None
-            man_ob = None
-            
+                    
         if arm_ob == None:
-            self.report({'ERROR'}, "You need a 'Roots' armature, pease add one or see wiki")
+            self.report({'ERROR'}, "You need a 'Roots' armature, please add one or see wiki")
             return {'CANCELLED'}
         
         if context.mode != 'OBJECT':
             bpy.ops.object.mode_set(mode = 'OBJECT')
-            
+        
         context.scene.objects.active = arm_ob
         arm_ob.select = True
-        jaw_ob = bpy.data.objects.get('Base Gingiva')
-        #create a vertex group for every maxillary bone
-        for bone in arm_ob.data.bones:
-            #if bone.name.startswith('1') or bone.name.startswith('2'):
-            #    jaw_ob = max_ob
-            #else:
-            #    jaw_ob = man_ob
-            #TODO clean this up    
-            if jaw_ob != None:
-            
-                if bone.name not in jaw_ob.vertex_groups:
-                    vg = jaw_ob.vertex_groups.new(name = bone.name)
-                else:
-                    vg = jaw_ob.vertex_groups[bone.name]
-                #make all members, weight at 0    
-                vg.add([i for i in range(0,len(jaw_ob.data.vertices))], 0, type = 'REPLACE')
-                
-            tooth = context.scene.objects.get(bone.name.split(' ')[0] + ' Convex')
-            if tooth == None: continue
-            
-            if jaw_ob != None:
-                if tooth.name+'_prox' in jaw_ob.modifiers:
-                    mod = jaw_ob.modifiers.get(tooth.name + '_prox')
-                else:
-                    mod = jaw_ob.modifiers.new(tooth.name + '_prox', 'VERTEX_WEIGHT_PROXIMITY')
-                    
-                mod.target = tooth
-                mod.vertex_group = bone.name
-                mod.proximity_mode = 'GEOMETRY'
-                mod.min_dist = 5 #4.5
-                mod.max_dist = 0
-                mod.falloff_type = 'SHARP' #'ICON_SPHERECURVE'
-                mod.show_expanded = False
-            
-            pbone = arm_ob.pose.bones[bone.name]
-            
-            if 'Child Of' in pbone.constraints:
-                cons = pbone.constraints['Child Of']
-                cons.target = tooth
-                #cons.use_rotation_z = False
-            else:
-                cons = pbone.constraints.new(type = 'CHILD_OF')
-                cons.target = tooth
-                    
-                arm_ob.data.bones.active = pbone.bone
-                bone.select = True
-                bpy.ops.object.mode_set(mode = 'POSE')
-                
-                context_copy = bpy.context.copy()
-                context_copy["constraint"] = pbone.constraints["Child Of"]    
-                bpy.ops.constraint.childof_set_inverse(context_copy, constraint="Child Of", owner='BONE')
-                bpy.ops.object.mode_set(mode = 'OBJECT')
-                
-                cons2 = pbone.constraints.new(type = 'LIMIT_ROTATION')
-                cons2.owner_space = 'LOCAL'
-                cons2.use_limit_y = True
-                cons2.min_y = -3 * math.pi/180
-                cons2.max_y = 3 * math.pi/180
-                
-            
-        #if max_ob != None:
-        #    if 'Armature' in max_ob.modifiers:
-        #        mod = max_ob.modifiers['Armature']
-        #        max_ob.modifiers.remove(mod)
-        #    mod = max_ob.modifiers.new('Armature', type = 'ARMATURE')
-        #    mod.object = arm_ob
-        #    mod.use_vertex_groups = True
         
-        #if man_ob != None:
-        #    if 'Armature' in man_ob.modifiers:
-        #        mod = man_ob.modifiers['Armature']
-        #        man_ob.modifiers.remove(mod)
-        #    mod = man_ob.modifiers.new('Armature', type = 'ARMATURE')
-        #    mod.object = arm_ob
-        #    mod.use_vertex_groups = True       
-        
-        #apply the prox mods
-        old_me = jaw_ob.data
-        me = jaw_ob.to_mesh(context.scene, apply_modifiers = True, settings = 'PREVIEW')
-        jaw_ob.modifiers.clear()
-        jaw_ob.data = me
-        bpy.data.meshes.remove(old_me)
-        
-        if 'Armature' in jaw_ob.modifiers:
-            mod = jaw_ob.modifiers['Armature']
-            jaw_ob.modifiers.remove(mod)
-        mod = jaw_ob.modifiers.new('Armature', type = 'ARMATURE')
-        mod.object = arm_ob
-        mod.use_vertex_groups = True       
-        
+        if max_ob:
+            if len(max_ob.modifiers):
+                apply_mods(max_ob)
+            
+            link_ob_to_bone(max_ob, arm_ob)
+        #if mand_ob:
+        #    link_ob_to_bone(mand_ob, arm_ob)
+            
         return {'FINISHED'}
 
 class OPENDENTAL_OT_adjust_roots(bpy.types.Operator):

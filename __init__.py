@@ -45,7 +45,7 @@ from .op_ai_teeth.ai_teeth import AITeeth_Polytrim
 from . import ortho
 from . import helper_ops
 from . import salience
-from .operators import cloud_export_stl, pick_teeth, segment_teeth, optimize_model, get_convex_teeth, get_reduction_shell, get_two_part_model, get_ortho_setup, edit_axes, keyframe_to_solid, composite_buttons
+from .operators import full_ortho_setup, cloud_export_stl, pick_teeth, segment_teeth, optimize_model, get_convex_teeth, get_reduction_shell, get_two_part_model, get_ortho_setup, edit_axes, keyframe_to_solid, composite_buttons
 
 
 class AISceneSettings(bpy.types.PropertyGroup):
@@ -174,36 +174,42 @@ class VIEW3D_PT_AITeeth(bpy.types.Panel):
             row.operator( "aiteeth.segment_lower_teeth", text = "Segment Lower Teeth")
 
         
-        #row = layout.row()
-        #row.label('Tooth Animation Pipeline')
+        row = layout.row()
+        row.label('Movement Mockup Pipeline')
         
          
-        #row = layout.row()
-        #row.operator("ai_teeth.cloud_ortho_setup")
+        row = layout.row()
+        row.operator("ai_teeth.diagnostic_setup")
         
-        #row = layout.row()
-        #row.operator("d3ortho.adjust_axes")
+        row = layout.row()
+        row.operator("d3ortho.adjust_axes")
         
-        #row = layout.row()
-        #row.operator("opendental.confirm_tooth_orientations")
+        row = layout.row()
+        row.operator("opendental.confirm_tooth_orientations")
         
-        #row = layout.row()
-        #row.operator("d3ortho.empties_to_armature")
+        row = layout.row()
+        row.operator("d3ortho.empties_to_armature")
         
-        #row = layout.row()
-        #row.operator("opendental.set_roots_parents")
+        row = layout.row()
+        row.operator("opendental.set_roots_parents")
         
-        #row = layout.row()
-        #row.operator("opendental.set_movement_keyframe")
+        row = layout.row()
+        row.operator("opendental.set_movement_keyframe")
         
         
-        #row = layout.row()
-        #row.operator("d3ortho.keyframe_solid")
+        row = layout.row()
+        row.operator("d3ortho.keyframe_solid")
         
         
         
         row = layout.row()
         row.label('Modelling Operations')
+        
+        row = layout.row()
+        row.operator("ai_teeth.reduction_shell")
+        
+        row = layout.row()
+        row.operator('ai_teeth.two_part_model')
         
         #row = layout.row()
         #row.operator("ai_teeth.cloud_convex_teeth")
@@ -212,9 +218,11 @@ class VIEW3D_PT_AITeeth(bpy.types.Panel):
         #row.operator("ai_teeth.cloud_two_part_model")
         
         row = layout.row()
-        row.operator("ai_teeth.reduction_shell")
+        row.label('Save and Export')
         
-        if hasattr(bpy.types, "D3SplintCloudSave"):
+        
+        
+        if hasattr(bpy.types, "D3SPLINT_OT_save_cloud_blend"):
             row = layout.row()
             row.operator("d3splint.save_cloud_blend")
         row = layout.row()
@@ -239,6 +247,7 @@ def register():
     edit_axes.register()
     keyframe_to_solid.register()
     composite_buttons.register()
+    full_ortho_setup.register()
     
     bpy.utils.register_class(AISceneSettings)
     bpy.types.Scene.ai_settings = bpy.props.PointerProperty(type = AISceneSettings)
@@ -266,6 +275,7 @@ def unregister():
     edit_axes.unregister()
     keyframe_to_solid.unfregister()
     composite_buttons.unregister()
+    full_ortho_setup.unregister()
     
     bpy.utils.unregister_class(AISceneSettings)
     del bpy.types.Scene.ai_settings

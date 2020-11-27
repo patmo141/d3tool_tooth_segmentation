@@ -370,11 +370,13 @@ class AITeeth_OT_cloud_ortho_setup_credit(bpy.types.Operator):
 
 
 def register():
-    bpy.utils.register_class(AITeeth_OT_cloud_ortho_setup_credit)
-    bpy.utils.register_class(AITeeth_OT_send_ortho_setup)
+    pass
+    #bpy.utils.register_class(AITeeth_OT_cloud_ortho_setup_credit)
+    #bpy.utils.register_class(AITeeth_OT_send_ortho_setup)
 
 
 def unregister():
-    bpy.utils.register_class(AITeeth_OT_cloud_ortho_setup_credit)
-    bpy.utils.unregister_class(AITeeth_OT_send_ortho_setup)
+    pass
+    #bpy.utils.register_class(AITeeth_OT_cloud_ortho_setup_credit)
+    #bpy.utils.unregister_class(AITeeth_OT_send_ortho_setup)
 
