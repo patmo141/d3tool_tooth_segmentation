@@ -119,7 +119,7 @@ class AITeeth_OT_ortho_setup(bpy.types.Operator):
             if " Convex" in ob.name or "_root" in ob.name:
                 ob.hide = False
                 
-            if "_root_empty" in ob.name:
+            if " root_empty" in ob.name:
                 ob.hide_select = False
                 last_root = ob
                 ob.data = axis_vis.data
@@ -196,12 +196,12 @@ class D3Ortho_OT_adjust_axes(CookieCutter):
             ob.hide = True
             ob.hide_select = True
             
-            if " Convex" in ob.name or "_root_empty" in ob.name:
+            if " Convex" in ob.name or " root_empty" in ob.name:
                 ob.hide = False
             else:
                 ob.hide = True
                 
-            if "_root_empty" in ob.name:
+            if " root_empty" in ob.name:
                 ob.hide_select = False
                 last_root = ob
                 

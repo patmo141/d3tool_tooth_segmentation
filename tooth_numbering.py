@@ -6,6 +6,16 @@ lower_perm = ['17','18','19','20','21','22','23','24','25','26','27','28','29','
 lower_prim = ['K','L','M','N','O','P','Q','R','S','T']
 
 
+
+upper_right = ['1','2','3','4','5','6','7','8']
+upper_left = ['9','10','11','12','13','14','15','16']
+lower_left = ['17','18','19','20','21','22','23','24']
+lower_right = ['25','26','27','28','29','30','31','32']
+
+
+upper_view_order = upper_right + upper_left
+lower_view_order = [ele for ele in reversed(lower_right)] + [ele for ele in reversed(lower_left)]
+
 upper_teeth = set(upper_perm + upper_prim)
 lower_teeth = set(lower_perm + lower_prim)
 

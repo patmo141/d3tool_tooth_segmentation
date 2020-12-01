@@ -217,10 +217,10 @@ def main_function(context,
     
     
     if use_select:
-        selected_teeth = [ob for ob in bpy.context.scene.objects if 'tooth' in ob.data.name and ob.select == True]
+        selected_teeth = [ob for ob in bpy.context.scene.objects if ob.type == 'MESH' and 'tooth' in ob.data.name and ob.select]
     
     else:
-        selected_teeth = [ob for ob in bpy.context.scene.objects if 'tooth' in ob.data.name]
+        selected_teeth = [ob for ob in bpy.context.scene.objects if  ob.type == 'MESH' and 'tooth' in ob.data.name]
     
     upper_teeth = [ob for ob in selected_teeth if data_tooth_label(ob.name) in tooth_numbering.upper_teeth]
     lower_teeth = [ob for ob in selected_teeth if data_tooth_label(ob.name) in tooth_numbering.lower_teeth]

@@ -18,7 +18,7 @@ from mathutils.bvhtree import BVHTree
 from bpy_extras import view3d_utils
 
 from . import bgl_utils
-
+from . import tooth_numbering
 
 #TODO, better system for tooth # systems
 #TOOTH_NUMBERS = [11,12,13,14,15,16,17,18,
@@ -171,7 +171,7 @@ class OPENDENTAL_OT_add_bone_roots(bpy.types.Operator):
         bpy.ops.object.mode_set(mode = 'EDIT')
         
         for ob in self.units:
-            e = context.scene.objects.get(ob.name.split(' ')[0] + '_root_empty')
+            e = context.scene.objects.get(ob.name.split(' ')[0] + ' root_empty')
             b = arm_ob.data.edit_bones.get(ob.name.split(' ')[0] + ' root')
             
             if e != None and b != None:
@@ -366,7 +366,7 @@ class OPENDENTAL_OT_confirm_transforms_for_teeth (bpy.types.Operator):
         teeth = [ob for ob in bpy.data.objects if 'Convex' in ob.name]
         
         for ob in teeth:
-            name = ob.name.split(' ')[0] + '_root_empty'
+            name = ob.name.split(' ')[0] + ' root_empty'
             axis = bpy.data.objects.get(name)
             mx = axis.matrix_world.copy()
             rmx = mx.to_3x3().to_4x4()
@@ -418,7 +418,7 @@ class OPENDENTAL_OT_empties_to_armature(bpy.types.Operator):
             
         bpy.ops.armature.bone_primitive_add(name = "Non Movable")
         for ob in teeth:
-            e = context.scene.objects.get(ob.name.split(' ')[0] + '_root_empty')
+            e = context.scene.objects.get(ob.name.split(' ')[0] + ' root_empty')
             b = arm_ob.data.edit_bones.get(ob.name.split(' ')[0] + ' root')
             
             if e != None and b != None:
@@ -451,6 +451,12 @@ class OPENDENTAL_OT_empties_to_armature(bpy.types.Operator):
 def link_ob_to_bone(jaw_ob, arm_ob):
     #jaw_ob = bpy.data.objects.get('Base Gingiva')
     #create a vertex group for every maxillary bone
+    
+    
+    if 'Upper' in jaw_ob.name:
+        tooth_names = tooth_numbering.upper_teeth
+    else:
+        tooth_names = tooth_numbering.lower_teeth
     for bone in arm_ob.data.bones:
         #if bone.name.startswith('1') or bone.name.startswith('2'):
         #    jaw_ob = max_ob
@@ -458,6 +464,8 @@ def link_ob_to_bone(jaw_ob, arm_ob):
         #    jaw_ob = man_ob
         #TODO clean this up    
         
+        if tooth_numbering.data_tooth_label(bone.name.split(' ')[0]) not in tooth_names:
+            continue
         
         if bone.name not in jaw_ob.vertex_groups:
             vg = jaw_ob.vertex_groups.new(name = bone.name)
@@ -568,8 +576,8 @@ class OPENDENTAL_OT_setup_root_parenting(bpy.types.Operator):
         #make sure we don't mess up any animations!
         context.scene.frame_set(0)
         
-        max_ob = bpy.data.objects.get(bpy.context.scene.d3ortho_upperjaw)
-        mand_ob = bpy.data.objects.get(bpy.context.scene.d3ortho_lowerjaw)
+        max_ob = bpy.data.objects.get('Upper Gingiva')
+        mand_ob = bpy.data.objects.get('Lower Gingiva')
         arm_ob = context.scene.objects.get('Roots')
                     
         if arm_ob == None:
@@ -587,9 +595,23 @@ class OPENDENTAL_OT_setup_root_parenting(bpy.types.Operator):
                 apply_mods(max_ob)
             
             link_ob_to_bone(max_ob, arm_ob)
-        #if mand_ob:
-        #    link_ob_to_bone(mand_ob, arm_ob)
+        if mand_ob:
+            if len(max_ob.modifiers):
+                apply_mods(mand_ob)
+                
+            link_ob_to_bone(mand_ob, arm_ob)
             
+            
+        for ob in bpy.data.objects:
+            ob.hide = True
+            if 'Convex' in ob.name:
+                ob.hide = False
+        if max_ob:
+            max_ob.hide = False
+            
+        if mand_ob:
+            mand_ob.hide = False       
+        
         return {'FINISHED'}
 
 class OPENDENTAL_OT_adjust_roots(bpy.types.Operator):

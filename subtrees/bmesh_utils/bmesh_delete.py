@@ -95,7 +95,7 @@ def bmesh_fast_delete(bme:BMesh, verts:list=None, edges:list=None, faces:list=No
             if v.is_valid: bme.verts.remove(v)
     if edges is not None:
         for e in edges:
-            if e.is_valid: bme.verts.remove(e)
+            if e.is_valid: bme.edges.remove(e)
     if faces is not None:
         for f in faces:
-            if f.is_valid: bme.verts.remove(f)
+            if f.is_valid: bme.faces.remove(f)

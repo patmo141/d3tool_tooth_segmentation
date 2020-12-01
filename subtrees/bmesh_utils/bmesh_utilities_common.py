@@ -592,6 +592,63 @@ def partition_faces_between_edge_boundaries(bme:BMesh, input_faces:set, boundary
 
     return islands
 
+def edge_loops_from_bmedges_topo(bme, bm_edges, max_loops = 10):
+    '''
+    this function is unsafe and does not handle erros
+    this function assumes the non manifold edges form closed non intersecting loops
+    TODO, only take CCW turns at nodes
+    TODO, detect nodes
+    '''
+    
+    return_dict = {}
+    ed_set = set(bm_edges)
+    verts = set()
+    for ed in bm_edges:
+        verts.update(ed.verts[:])
+    
+    #this function is dangerous as there might not be a next_edge!    
+    def next_edge(v, prev_ed):
+        return [ed for ed in v.link_edges if ed in ed_set and ed != prev_ed][0]
+    
+       
+    loops = []
+    
+    iters = 0
+    while len(verts) and iters < max_loops:
+        iters += 1
+        v = verts.pop()
+        
+        branch_eds = [ed for ed in v.link_edges if ed in ed_set]
+        if not len(branch_eds): continue
+        if len(branch_eds) != 2:
+            print(len(branch_eds))
+            print('WE HAVE NODES!')
+            return
+        
+        ed = branch_eds[0]
+        
+        #walk along long each of the branches, ideally looping back around
+        branch_verts = [v]
+        branch_edges = [ed]
+        
+        next_v = ed.other_vert(v)
+        next_ed = next_edge(next_v, ed)
+        
+        while next_v != v:  #remember v is the start vertex
+            branch_verts += [next_v]
+            branch_edges += [next_ed]
+            if next_v in verts:
+                verts.remove(next_v)
+            
+            #step forward
+            next_v = next_ed.other_vert(next_v)
+            next_ed = next_edge(next_v, next_ed)
+            
+        #verts.difference_update(branch_verts) #TODO test per vert popping or
+        #branch += [next_v]  #capture the last node  #not for this closed loop example
+        loops.append((branch_verts, branch_edges))
+        
+    return loops
 
 def edge_loops_from_bmedges(bme:BMesh, bm_edges:list, ret:dict={'VERTS'}):
     """
@@ -673,6 +730,97 @@ def edge_loops_from_bmedges(bme:BMesh, bm_edges:list, ret:dict={'VERTS'}):
 
     return geom_dict
 
+def offset_bmesh_edge_loop(bme, bmedges, axis, res, expected_loops = 1, debug = False):
+
+    '''
+    takes a CLOSED LOOP of bmesh edges and moves them in
+    eg..take a  loop and turn it into a railroad track
+    
+    needs an axis to move perpendicular too...typically 3d view direction
+    args:
+        bme - Blender BMesh Data
+        bmedges - indices of edges that form a closed loop
+        axis - the local axis which to extrude perpendicular to type Vector...probably the insertion axis
+        res - distance step for each extrusion...world size
+    '''
+    
+    z = axis
+    bme.edges.ensure_lookup_table()
+    bme.verts.ensure_lookup_table()
+    loops = edge_loops_from_bmedges_topo(bme, bmedges)
+    verts_in_order = loops[0][0]
+    
+    vcoords = [v.co for v in verts_in_order]
+    #total_com = Vector(tuple(np.mean([Vector(v) for v in ob.bound_box[:]], axis = 0)))
+    
+    
+    vcoords.append(vcoords[0])  
+    vcoords.append(vcoords[1])
+    
+    #the first (n=0) element of the list already repeated, adding the 2nd to the end as well.
+    l = len(vcoords)    
+    verts_alone = vcoords[0:l-2]  #dumb 
+    
+    
+    lerps = [Vector((0,0,0))]*(l-2)
+    
+    curl = 0
+    
+    for n in range(0,l-2):
+
+        #Vec representation of the two edges
+        V0 = (vcoords[n+1] - vcoords[n])
+        V1 = (vcoords[n+2] - vcoords[n+1])
+        
+        ##XY projection
+        T0 = V0 - V0.project(z)
+        T1 = V1 - V1.project(z)
+        
+        cross = T0.cross(T1)        
+        sign = 1
+        if cross.dot(z) < 0:
+            sign = -1
+        
+        rot = T0.rotation_difference(T1)  
+        ang = rot.angle
+        curl = curl + ang*sign
+        lerps[n] = V0.lerp(V1,.5)
+     
+    
+       
+    clockwise = 1
+    if curl < 0:
+        clockwise = -1
+    
+    
+    abs_curl = clockwise * curl
+    expected_curl = expected_loops * 2 * math.pi
+    
+    if abs(abs_curl - expected_loops * 2 * math.pi) > .2 * 2 * math.pi: #10% different than 2*pi
+        print('WARNING, encountered unexpected number of loops')
+        print('Expected a curl of %f' % expected_curl)
+        print('Calculated a curl of %f' % curl)
+        print('Calculated an abs curl of %f' % abs_curl)
+    
+    if debug:
+        print(curl)
+        print('you can double check the curl/CCW by examining first 10 vertex indices')
+        
+    for n in range(0,l-2):
+        
+        ind = int(math.fmod(n+1, len(verts_in_order)))
+        v =  verts_in_order[ind]
+        
+        V = lerps[n]
+        
+        trans = -1 * clockwise * z.cross(V)
+        trans.normalize()
+        #delta = scale_vec_mult(trans, iscl)
+        #delta *= res 
+        delta = res * trans      
+        v.co += delta       
+        
+    return abs_curl, expected_curl  #alllow comparison 
 # CAN WE DELETE THIS?
 def edge_loops_from_bmedges_old(bmesh:BMesh, bm_edges:list):
     """
@@ -1450,6 +1598,33 @@ def bme_rip_vertex(bme, bmvert):
     bme.verts.remove(bmvert)
     
 
+def collapse_ed_simple(bme, ed):
+    '''
+    only works  when there are no faces
+    '''
+    
+    
+    v0 = ed.verts[0]
+    v1 = ed.verts[1]
+    
+    
+    
+    ed0 = [ed_l for ed_l in v0.link_edges[:] if ed_l != ed][0]
+    ed1 = [ed_l for ed_l in v1.link_edges[:] if ed_l != ed][0]
+    
+    v00 = ed0.other_vert(v0)
+    v11 = ed1.other_vert(v1)
+    v_new = bme.verts.new(.5 * (v00.co + v11.co))
+    
+    bme.edges.remove(ed0)
+    bme.edges.remove(ed1)
+    bme.verts.remove(v0)
+    bme.verts.remove(v1)
+    
+    ed0_new = bme.edges.new((v_new, v00))
+    ed1_new = bme.edges.new((v_new, v11))
+    
+    return [ed0_new, ed1_new] , [ed0, ed1]
 
 ####################################
 ###  Geometric Operators  ##########

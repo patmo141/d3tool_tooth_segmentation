@@ -46,7 +46,7 @@ from . import ortho
 from . import helper_ops
 from . import salience
 from .operators import full_ortho_setup, cloud_export_stl, pick_teeth, segment_teeth, optimize_model, get_convex_teeth, get_reduction_shell, get_two_part_model, get_ortho_setup, edit_axes, keyframe_to_solid, composite_buttons
-
+from .operators import view_operators, roots_and_preps
 
 class AISceneSettings(bpy.types.PropertyGroup):
     accept_ua = BoolProperty(name = 'Accept User Agreement', default = False, description = "Acknowledge that you have read and agree to the user agreement")
@@ -240,7 +240,7 @@ def register():
     optimize_model.register()
     get_reduction_shell.register()
     cloud_export_stl.register()
-    
+    view_operators.register()
     get_two_part_model.register()
     get_ortho_setup.register()
     ortho.register()
@@ -248,12 +248,16 @@ def register():
     keyframe_to_solid.register()
     composite_buttons.register()
     full_ortho_setup.register()
+    roots_and_preps.register()
     
     bpy.utils.register_class(AISceneSettings)
     bpy.types.Scene.ai_settings = bpy.props.PointerProperty(type = AISceneSettings)
     bpy.types.Scene.d3ortho_upperjaw =  bpy.props.StringProperty(name = "Upper Model", description = "Set the working dental model.")
     bpy.types.Scene.d3ortho_lowerjaw =  bpy.props.StringProperty(name = "Lower Model", description = "Set the working dental model.")
     
+    bpy.types.Scene.tooth_movement =  bpy.props.BoolProperty(name = "Tooth Movement", description = "Will Teeth be Moved?")
+    bpy.types.Scene.tooth_reduction =  bpy.props.BoolProperty(name = "Tooth Reduction", description = "Will Teeth be Reduced?")
+    bpy.types.Scene.tooth_reduction_type =  bpy.props.EnumProperty(name = "Reduction Type", description = "Reduction Type", items = (('ANATOMIC', 'ANATOMIC', 'ANATOMIC'), ('THIMBLE', 'THIMBLE', 'THIMBLE')))
     
 def unregister():
     bpy.utils.unregister_class(AITeethPreferences)
@@ -268,8 +272,8 @@ def unregister():
     get_reduction_shell.unregister()
     cloud_export_stl.unregister()
     get_two_part_model.unregister()
-    
-    
+    view_operators.unregister()
+    roots_and_preps.unregister()
     ortho.unregister()
     get_ortho_setup.unregister()
     edit_axes.unregister()

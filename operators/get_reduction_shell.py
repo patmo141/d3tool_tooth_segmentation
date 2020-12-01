@@ -210,8 +210,10 @@ def make_reduction_shells(context, depth):
     bpy.context.scene.update() 
     
               
-    selected_teeth = [ob for ob in bpy.context.scene.objects if 'tooth' in ob.data.name and ob.select]
-    
+    selected_teeth = [ob for ob in bpy.context.scene.objects if ob.type == 'MESH' and 'tooth' in ob.data.name and ob.select]
+    if len(selected_teeth) == 0:
+        selected_teeth = [ob for ob in bpy.context.scene.objects if ob.type == 'MESH' and 'tooth' in ob.data.name]
+        
     upper_teeth = [ob for ob in selected_teeth if data_tooth_label(ob.name) in tooth_numbering.upper_teeth]
     lower_teeth = [ob for ob in selected_teeth if data_tooth_label(ob.name) in tooth_numbering.lower_teeth]
     
