@@ -14,65 +14,64 @@ from ..subtrees.metaballs.vdb_tools import remesh_bme
 from ..subtrees.bmesh_utils.bmesh_utilities_common import bmesh_join_list
 
 
+from .. import tooth_numbering
 
 
-def main(context, frame):
+def get_convex(teeth):
+    convex_teeth = [bpy.data.objects.get(ob.name + " Convex") for ob in teeth if ob.name + " Convex" in bpy.data.objects]     
+    return convex_teeth
+
+
+def main(context, gingiva, teeth, frame):
 
     context.scene.frame_set(frame)
 
     start = time.time()
     #get the gingiva and teeth
-    gingiva = bpy.data.objects.get('Base Gingiva')
-    teeth = [ob for ob in bpy.data.objects if 'Convex' in ob.name]
-    attachments = [ob for ob in bpy.data.objects if 'CB' in ob.name]
+    
+    
+    attachments = []
+    roots = []
+    for tooth in teeth:
+        for child in tooth.children:
+            if 'CB_attach' in child.name:
+                attachments.append(child)
+            if 'root_prep' in child.name:
+                roots.append(child)   
+    
+    bme = bmesh.new()
+    bme.from_object(gingiva, context.scene)
+    bme.transform(gingiva.matrix_world)
+    
+    
 
-    bme_teeth = []
-    
-    bme_gingiva = bmesh.new()
-    bme_gingiva.from_object(gingiva, context.scene)
-    bme_gingiva.transform(gingiva.matrix_world)
-    
-    bme_teeth = []
-    
-    for ob in teeth + attachments:
-        bme = bmesh.new()
-        bme.from_object(ob, context.scene)
-        bme.transform(ob.matrix_world)
-        bme_teeth.append(bme)
-    
-    
-    unified_teeth = bmesh_join_list(bme_teeth)    
-    bvh = BVHTree.FromBMesh(unified_teeth)
-    
-    
+    #fastest way to join objects
+    for ob in teeth + attachments + roots:
         
-    for v in bme_gingiva.verts:
-        loc, no, ind, d = bvh.find_nearest(v.co)
+        mx = ob.matrix_world
+        imx = mx.inverted()
         
-        if d < .25:
-            v.co = loc
-        
+        ob.data.transform(mx)
+        bme.from_mesh(ob.data)
+        ob.data.transform(imx)
     
-    unified_model = bmesh_join_list([bme_gingiva, unified_teeth])
-    remeshed_model = remesh_bme(unified_model, isovalue = 0.0, voxel_size = .15)
+     
+    remeshed_model = remesh_bme(bme, isovalue = 0.0, voxel_size = .15, adaptivity = 7.0)
     
     
-    me = bpy.data.meshes.new('Output' + str(frame))
-    ob = bpy.data.objects.new('Output' + str(frame), me)
+    new_me = bpy.data.meshes.new(gingiva.name[0:5] + ' ' + str(frame))
+    new_ob = bpy.data.objects.new(gingiva.name[0:5] + str(frame), new_me)
     
-    context.scene.objects.link(ob)
-    remeshed_model.to_mesh(me)
-    #unified_model.to_mesh(me)
+    context.scene.objects.link(new_ob)
+    remeshed_model.to_mesh(new_me)
+    #bme.to_mesh(new_me)
     
-    for bme in bme_teeth:
-        bme.free()
-    unified_teeth.free()
-    unified_model.free()
+    bme.free()
     remeshed_model.free()
     
     finish = time.time()
     print('made solid model in %f seconds' % (finish - start))
-    
+    return new_ob
     
     
 class AITeeth_OT_keyframe_to_solid(bpy.types.Operator):
@@ -80,6 +79,7 @@ class AITeeth_OT_keyframe_to_solid(bpy.types.Operator):
     bl_idname = "d3ortho.keyframe_solid"
     bl_label = "Keyframe to Solid"
 
+    
     
     @classmethod
     def poll(cls, context):
@@ -93,7 +93,31 @@ class AITeeth_OT_keyframe_to_solid(bpy.types.Operator):
     def execute(self, context):
         frame = context.scene.frame_current
         
-        main(context, frame)
+        
+        
+        selected_teeth = [ob for ob in bpy.context.scene.objects if ob.type == 'MESH' and 'tooth' in ob.data.name]
+        
+        upper_teeth = get_convex([ob for ob in selected_teeth if tooth_numbering.data_tooth_label(ob.name) in tooth_numbering.upper_teeth])
+        lower_teeth = get_convex([ob for ob in selected_teeth if tooth_numbering.data_tooth_label(ob.name) in tooth_numbering.lower_teeth])
+        upper_ging = bpy.data.objects.get('Upper Gingiva')
+        lower_ging = bpy.data.objects.get('Lower Gingiva')
+    
+    
+        new_obs = []
+        if upper_ging and upper_teeth:
+            
+            new_obs.append(main(context, upper_ging, upper_teeth, frame))
+            
+        if lower_ging and lower_teeth:
+            
+            new_obs.append(main(context, lower_ging, lower_teeth, frame))
+            
+        for ob in bpy.data.objects:
+            ob.select = False
+            ob.hide = True
+            
+        for ob in new_obs:
+            ob.hide = False
         
         return {'FINISHED'}
     

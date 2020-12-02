@@ -210,23 +210,19 @@ def make_reduction_shells(context, depth):
     bpy.context.scene.update() 
     
               
-    selected_teeth = [ob for ob in bpy.context.scene.objects if ob.type == 'MESH' and 'tooth' in ob.data.name and ob.select]
-    if len(selected_teeth) == 0:
-        selected_teeth = [ob for ob in bpy.context.scene.objects if ob.type == 'MESH' and 'tooth' in ob.data.name]
-        
-    upper_teeth = [ob for ob in selected_teeth if data_tooth_label(ob.name) in tooth_numbering.upper_teeth]
-    lower_teeth = [ob for ob in selected_teeth if data_tooth_label(ob.name) in tooth_numbering.lower_teeth]
+    selected_teeth = [ob for ob in bpy.context.scene.objects if ob.type == 'MESH' and 'Convex' in ob.name and ob.select]
     
-    print(selected_teeth)
-    print(upper_teeth)
-    print(lower_teeth)
-    
-    for teeth in [upper_teeth, lower_teeth]:
         
-        if len(teeth) == 0:
+    upper_teeth = [ob for ob in selected_teeth if data_tooth_label(ob.name.split(' ')[0]) in tooth_numbering.upper_teeth]
+    lower_teeth = [ob for ob in selected_teeth if data_tooth_label(ob.name.split(' ')[0]) in tooth_numbering.lower_teeth]
+    
+    
+    for convex_teeth in [upper_teeth, lower_teeth]:
+        
+        if len(convex_teeth) == 0:
             continue
         
-        if teeth[0].name in tooth_numbering.upper_teeth:
+        if convex_teeth[0].name.split(' ')[0] in tooth_numbering.upper_teeth:
             print('DOING UPPERS')
             if 'Upper Reduction' in bpy.data.objects:
                 shell_ob = bpy.data.objects.get('Upper Reduction')
@@ -245,34 +241,31 @@ def make_reduction_shells(context, depth):
                 shell_ob = bpy.data.objects.new('Lower Reduction', shell_me)
                 bpy.context.scene.objects.link(shell_ob)
         
-        #TODO NUmpy
-        #no = Vector((0,0,0))
-        #A = 0.0
-        #for tooth in teeth:
-        #    imx_ob = tooth.matrix_world.inverted()
-        #    mx_norm = imx_ob.transposed().to_3x3()
-        #    for f in tooth.data.polygons:
-        #        a = f.area
-        #        n = f.normal
-        #        no += a * mx_norm * n
-        #        A += a
-                
-        #plane_no = 1/A * no
-        
-            
-        convex_teeth = []
-        for ob in teeth:
-            
-            if ob.name + " Convex" in bpy.data.objects:
-                convex_teeth.append(bpy.data.objects.get(ob.name + " Convex"))
-            else:
-                convex_teeth.append(convexify_object(bpy.context, ob))
-            ob.data.update()
-            mod = ob.modifiers.new('Solidify', type = 'SOLIDIFY')
-            mod.thickness = 2.0 * depth
-            mod.offset = 0.0
-        
     
+
+        
+        thimble_preps = []
+        original_teeth = []
+        for c_ob in convex_teeth:
+            
+            ob = bpy.data.objects.get(c_ob.name.split(' ')[0])
+            if ob:
+                original_teeth.append(ob)
+        
+                ob.data.update()
+                mod = ob.modifiers.new('Solidify', type = 'SOLIDIFY')
+                mod.thickness = 2.0 * depth
+                mod.offset = 0.0
+                
+            for child in c_ob.children:
+                if 'thimble_prep' in child.name:
+                    thimble_preps.append(child)
+                    child.data.update()
+                    mod = child.modifiers.new('Solidify', type = 'SOLIDIFY')
+                    mod.thickness = depth
+                    mod.offset = 1.0
+            
+            
         kd_convex = KDTree(len(convex_teeth))
         bvhs = []
         bmes_convex = []
@@ -326,7 +319,7 @@ def make_reduction_shells(context, depth):
         bpy.context.scene.update()
         
         bmes = []
-        for ob in teeth:
+        for ob in original_teeth + thimble_preps:
             bme  = bmesh.new()
             bme.from_object(ob, bpy.context.scene)
             bme.transform(ob.matrix_world)
@@ -340,8 +333,8 @@ def make_reduction_shells(context, depth):
                     isovalue = 0.0, 
                     adaptivity = 0.0, 
                     only_quads = False, 
-                    voxel_size = max(.15, depth/4.0),
-                    filter_iterations = 3,
+                    voxel_size = .2,
+                    filter_iterations = 2,
                     filter_width = 4,
                     filter_sigma = 1.0,
                     grid = None,

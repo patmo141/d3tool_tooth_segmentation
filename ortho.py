@@ -681,6 +681,9 @@ class OPENDENTAL_OT_set_treatment_keyframe(bpy.types.Operator):
                 for kf in fcurve.keyframe_points:
                     kf.interpolation = 'LINEAR'
         
+        for ob in obs:
+            ob.select = False
+            
         return {'FINISHED'}
        
        

@@ -174,9 +174,9 @@ class VIEW3D_PT_AITeeth(bpy.types.Panel):
             row.operator( "aiteeth.segment_lower_teeth", text = "Segment Lower Teeth")
 
         
-        row = layout.row()
-        row.label('Movement Mockup Pipeline')
         
+        row = layout.row()
+        row.label('Setup Case Steps')
          
         row = layout.row()
         row.operator("ai_teeth.diagnostic_setup")
@@ -185,25 +185,23 @@ class VIEW3D_PT_AITeeth(bpy.types.Panel):
         row.operator("d3ortho.adjust_axes")
         
         row = layout.row()
-        row.operator("opendental.confirm_tooth_orientations")
-        
+        row.operator("ai_teeth.root_preps")
+    
+    
         row = layout.row()
-        row.operator("d3ortho.empties_to_armature")
-        
+        row.operator("ai_teeth.tooth_vis_popup", text = "Tooh Selection")  
         row = layout.row()
-        row.operator("opendental.set_roots_parents")
+        row.label('Movement Mockup Pipeline')
         
         row = layout.row()
         row.operator("opendental.set_movement_keyframe")
-        
         
         row = layout.row()
         row.operator("d3ortho.keyframe_solid")
         
         
-        
         row = layout.row()
-        row.label('Modelling Operations')
+        row.label('Waxup Modelling Pipeline')
         
         row = layout.row()
         row.operator("ai_teeth.reduction_shell")
@@ -211,11 +209,6 @@ class VIEW3D_PT_AITeeth(bpy.types.Panel):
         row = layout.row()
         row.operator('ai_teeth.two_part_model')
         
-        #row = layout.row()
-        #row.operator("ai_teeth.cloud_convex_teeth")
-        
-        #row = layout.row()
-        #row.operator("ai_teeth.cloud_two_part_model")
         
         row = layout.row()
         row.label('Save and Export')

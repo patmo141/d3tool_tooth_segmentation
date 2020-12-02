@@ -32,7 +32,7 @@ def get_roots(teeth):
   
   
 def get_thimbles(teeth):
-    thimbles = [bpy.data.objects.get(ob.name + " root_prep") for ob in teeth if ob.name + " root_prep" in bpy.data.objects]
+    thimbles = [bpy.data.objects.get(ob.name + " thimble_prep") for ob in teeth if ob.name + " thimble_prep" in bpy.data.objects]
     return thimbles
   
 def get_teeth(context):                                     
@@ -58,6 +58,7 @@ class AITeeth_OT_tooth_vis_popup(bpy.types.Operator):
                                         items = (('ORIGINAL','ORIGINAL','ORIGINAL'), ('CONVEX','CONVEX','CONVEX'), ('ROOT', 'ROOT', 'ROOT'), ('THIMBLE', 'THIMBLE', 'THIMBLE')),
                                         default = 'CONVEX')
 
+    show_unselected = bpy.props.BoolProperty(name = 'Show Unselected', default = True)
 
     @classmethod
     def poll(cls, context):
@@ -142,6 +143,11 @@ class AITeeth_OT_tooth_sel_popup(bpy.types.Operator):
                                         items = (('ORIGINAL','ORIGINAL','ORIGINAL'), ('CONVEX','CONVEX','CONVEX'), ('ROOT', 'ROOT', 'ROOT'), ('THIMBLE', 'THIMBLE', 'THIMBLE')),
                                         default = 'CONVEX')
 
+
+    show_unselected = bpy.props.BoolProperty(name = 'Show Unselected', default = True)
+    
+    hide_all_others = bpy.props.BoolProperty(name = 'Hide All Other', default = True, description = 'Hide all other objects in scene while selecting items')
+    
     @classmethod
     def poll(cls, context):
         
@@ -149,15 +155,19 @@ class AITeeth_OT_tooth_sel_popup(bpy.types.Operator):
     
     def check(self, context):
         
+        if self.hide_all_others:
+            for ob in bpy.data.objects:
+                ob.hide = True
+                
         self.update_teeth(context)
         for ob in self.upper_teeth:
-            if ob.select == False:
+            if ob.select == False and self.show_unselected:
                 ob.hide = True
             else:
                 ob.hide = False
             
         for ob in self.lower_teeth:
-            if ob.select == False:
+            if ob.select == False and self.show_unselected:
                 ob.hide = True
             else:
                 ob.hide = False
@@ -208,6 +218,8 @@ class AITeeth_OT_tooth_sel_popup(bpy.types.Operator):
         
     def invoke(self, context, event):
         
+        self.hidden_obs = [ob for ob in bpy.data.objects if ob.hide]
+        self.visible_obs = [ob for ob in bpy.data.objects if not ob.hide]
         
         all, sel, upper, lower = get_teeth(context)
         
@@ -253,7 +265,11 @@ class AITeeth_OT_tooth_sel_popup(bpy.types.Operator):
         return context.window_manager.invoke_props_dialog(self, width = 700)
         
     def execute(self, context):
-         
+        
+        for ob in self.hidden_obs:
+            ob.hide = True
+        for ob in self.visible_obs:
+            ob.hide = False
         return {'FINISHED'}
     
     def draw(self, context):

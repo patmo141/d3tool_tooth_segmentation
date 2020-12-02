@@ -195,6 +195,7 @@ class D3Ortho_OT_adjust_axes(CookieCutter):
         for ob in bpy.data.objects:
             ob.hide = True
             ob.hide_select = True
+            ob.select = False
             
             if " Convex" in ob.name or " root_empty" in ob.name:
                 ob.hide = False

@@ -300,7 +300,7 @@ class D3Tool_OT_composite_attachment_on_tooth(bpy.types.Operator):
         
         
     
-        name = 'CB_' + best_ob.name.split('_')[0]
+        name = 'CB_attach_' + best_ob.name.split('_')[0]
         
         me = bpy.data.meshes.new(name)
         ob = bpy.data.objects.new(name, me)
