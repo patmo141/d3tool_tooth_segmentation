@@ -46,7 +46,7 @@ from . import ortho
 from . import helper_ops
 from . import salience
 from .operators import full_ortho_setup, cloud_export_stl, pick_teeth, segment_teeth, optimize_model, get_convex_teeth, get_reduction_shell, get_two_part_model, get_ortho_setup, edit_axes, keyframe_to_solid, composite_buttons
-from .operators import view_operators, roots_and_preps
+from .operators import view_operators, roots_and_preps, orient_model, mark_extracted, mark_prepped, mark_dies, make_model
 
 class AISceneSettings(bpy.types.PropertyGroup):
     accept_ua = BoolProperty(name = 'Accept User Agreement', default = False, description = "Acknowledge that you have read and agree to the user agreement")
@@ -159,6 +159,13 @@ class VIEW3D_PT_AITeeth(bpy.types.Panel):
         row = layout.row()
         row.operator("ai_teeth.optimize_model", text = "Optimize Mesh")
         row = layout.row()
+        
+        #landmark orient_model
+        #manual orient
+        row = layout.row()
+        row.operator("d3ortho.orient_model")
+        
+        row = layout.row()
         row.operator("aiteeth.mark_upper_tooth_locations", text = 'Indicate Upper Teeth')
         row = layout.row()
         row.operator("aiteeth.mark_lower_tooth_locations", text = 'Indicate Lower Teeth')
@@ -187,11 +194,13 @@ class VIEW3D_PT_AITeeth(bpy.types.Panel):
         row = layout.row()
         row.operator("ai_teeth.root_preps")
     
-    
         row = layout.row()
         row.operator("ai_teeth.tooth_vis_popup", text = "Tooh Selection")  
         row = layout.row()
         row.label('Movement Mockup Pipeline')
+        
+        row = layout.row()
+        row.operator("d3tool.composite_attachment_tooth")
         
         row = layout.row()
         row.operator("opendental.set_movement_keyframe")
@@ -199,15 +208,25 @@ class VIEW3D_PT_AITeeth(bpy.types.Panel):
         row = layout.row()
         row.operator("d3ortho.keyframe_solid")
         
+        row = layout.row()
+        row.label('Virtual Mockup Pipeline')
         
         row = layout.row()
-        row.label('Waxup Modelling Pipeline')
+        row.operator("ai_teeth.mark_extracted_teeth")
         
         row = layout.row()
-        row.operator("ai_teeth.reduction_shell")
+        row.operator("ai_teeth.mark_prepared_teeth")
         
         row = layout.row()
-        row.operator('ai_teeth.two_part_model')
+        row.operator("ai_teeth.mark_die_teeth")
+        
+        row = layout.row()
+        row.label('One Off Functions')
+        row = layout.row()
+        row.operator("ai_teeth.prep_original_model")
+        
+        #row = layout.row()
+        #row.operator('ai_teeth.two_part_model')
         
         
         row = layout.row()
@@ -242,6 +261,11 @@ def register():
     composite_buttons.register()
     full_ortho_setup.register()
     roots_and_preps.register()
+    orient_model.register()
+    mark_prepped.register()
+    mark_extracted.register()
+    mark_dies.register()
+    make_model.register()
     
     bpy.utils.register_class(AISceneSettings)
     bpy.types.Scene.ai_settings = bpy.props.PointerProperty(type = AISceneSettings)
@@ -270,9 +294,14 @@ def unregister():
     ortho.unregister()
     get_ortho_setup.unregister()
     edit_axes.unregister()
-    keyframe_to_solid.unfregister()
+    keyframe_to_solid.unregister()
     composite_buttons.unregister()
     full_ortho_setup.unregister()
+    orient_model.unregister()
+    mark_prepped.unregister()
+    mark_extracted.unregister()
+    mark_dies.unregister()
+    make_model.unregister()
     
     bpy.utils.unregister_class(AISceneSettings)
     del bpy.types.Scene.ai_settings

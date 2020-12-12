@@ -356,5 +356,5 @@ def register():
      
 def unregister():
     bpy.utils.unregister_class(AITEETH_OT_label_teeth)
-    bpy.utils.register_class(AITEETH_OT_label_maxillary_teeth)
-    bpy.utils.register_class(AITEETH_OT_label_mandibular_teeth)
+    bpy.utils.unregister_class(AITEETH_OT_label_maxillary_teeth)
+    bpy.utils.unregister_class(AITEETH_OT_label_mandibular_teeth)

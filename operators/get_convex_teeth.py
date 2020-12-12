@@ -367,6 +367,6 @@ def register():
 
 
 def unregister():
-    bpy.utils.register_class(AITeeth_OT_cloud_convex_teeth_credit)
+    bpy.utils.unregister_class(AITeeth_OT_cloud_convex_teeth_credit)
     bpy.utils.unregister_class(AITeeth_OT_send_cloud_convex_teeth)
 

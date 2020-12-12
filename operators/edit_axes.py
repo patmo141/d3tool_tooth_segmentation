@@ -171,6 +171,9 @@ class D3Ortho_OT_adjust_axes(CookieCutter):
         self.axis_vis = create_axis_vis()
         
         self.teeth = [ob for ob in bpy.data.objects if 'Convex' in ob.name]
+        for ob in bpy.data.objects:
+            ob.select = False
+        bpy.context.scene.objects.active = None
         
         if len(self.teeth) == 0:
             self.done(cancel = True)

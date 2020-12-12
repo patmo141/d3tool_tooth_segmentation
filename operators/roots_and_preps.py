@@ -12,13 +12,18 @@ from mathutils import Vector, Matrix
 from mathutils.bvhtree import BVHTree
 
 from d3lib.bmesh_utils.bmesh_delete import bmesh_fast_delete, bmesh_delete
-from d3lib.metaballs.vdb_tools import remesh_bme
+from d3guard.subtrees.metaballs.vdb_tools import remesh_bme
+from d3guard.subtrees.metaballs.vdb_remesh import read_bmesh, convert_vdb
 
 from ..subtrees.bmesh_utils.bmesh_utilities_common import bme_rip_vertex, bbox_center, bound_box_bmverts
 from ..subtrees.bmesh_utils.bmesh_utilities_common import edge_loops_from_bmedges_topo, offset_bmesh_edge_loop, collapse_ed_simple
 from ..subtrees.geometry_utils.loops_tools import relax_loops_util
 from ..subtrees.geometry_utils.transformations import clockwise_loop
 
+from ..tooth_numbering import data_tooth_label
+from .. import tooth_numbering
+
+from .get_reduction_shell import make_reduction_shells
 
 def fast_bridge(bme, loop0, loop1, Z):
     
@@ -240,7 +245,20 @@ def make_root_prep(ob, flat_root = True, root_length = 8.0, prep_width = .75, ta
         thimble_ob = bpy.data.objects.new(new_name, thimble_me)
         thimble_ob.parent = ob
         thimble_ob.matrix_world = ob.matrix_world
-        bpy.context.scene.objects.link(thimble_ob) 
+        bpy.context.scene.objects.link(thimble_ob)
+        
+    new_name = ob.name.split(' ')[0] + ' margin_line' 
+    
+    if new_name in bpy.data.objects:
+        margin_ob = bpy.data.objects.get(new_name)
+        margin_me = margin_ob.data
+        
+    else:
+        margin_me = bpy.data.meshes.new(new_name)
+        margin_ob = bpy.data.objects.new(new_name, margin_me)
+        margin_ob.parent = ob
+        margin_ob.matrix_world = ob.matrix_world
+        bpy.context.scene.objects.link(margin_ob)
             
     bme = bmesh.new()
     bme.from_mesh(ob.data)
@@ -291,6 +309,7 @@ def make_root_prep(ob, flat_root = True, root_length = 8.0, prep_width = .75, ta
     bme.faces.ensure_lookup_table()
     bme.verts.index_update()  
       
+    bme.to_mesh(margin_me)
     ###
     ###  RELAX AND COLLAPSE THE LOOP
     ###
@@ -473,7 +492,7 @@ def make_root_prep(ob, flat_root = True, root_length = 8.0, prep_width = .75, ta
                 v.co = loc + Vector((0,0,1))
     
     #bmesh.ops.triangulate(bme, faces = fs)
-    #bmesh.ops.triangulate(bme, faces = bme.faces[:])
+    bmesh.ops.triangulate(bme, faces = bme.faces[:])
     
             
     #bme_re = remesh_bme(bme, 
@@ -502,6 +521,67 @@ def make_root_prep(ob, flat_root = True, root_length = 8.0, prep_width = .75, ta
 
 
 
+def reduce_and_remesh_preps(teeth, reduction_shell):
+    voxel_size = .15
+    
+    bme_red = bmesh.new()
+    bme_red.from_mesh(reduction_shell.data)
+    bme_red.transform(reduction_shell.matrix_world)
+    bme_red.verts.ensure_lookup_table()
+    bme_red.edges.ensure_lookup_table()
+    bme_red.faces.ensure_lookup_table()
+    bme_red.normal_update()
+    
+    verts0, tris0, quads0 = read_bmesh(bme_red)         
+    vdb_reduction = convert_vdb(verts0, tris0, quads0, voxel_size)
+    bme_red.free()
+    
+    reduction_shell.hide = True
+    
+    for tooth in teeth:
+        
+        root_prep = bpy.data.objects.get(tooth.name.split(' ')[0] + ' root_prep')
+        if not root_prep: continue
+        
+        bme = bmesh.new()
+        bme.from_mesh(root_prep.data)
+        bme.transform(root_prep.matrix_world)
+        bme.verts.ensure_lookup_table()
+        bme.edges.ensure_lookup_table()
+        bme.faces.ensure_lookup_table()
+        bme.normal_update()
+        
+        verts0, tris0, quads0 = read_bmesh(bme)         
+        vdb_prep = convert_vdb(verts0, tris0, quads0, voxel_size)
+        bme.free()
+        
+        vdb_prep.difference(vdb_reduction, False)
+        
+        ve, tr, qu = vdb_prep.convertToPolygons(0.0, (3.0/100.0)**2)
+
+        bm = bmesh.new()
+        for co in ve.tolist():
+            bm.verts.new(co)
+
+        bm.verts.ensure_lookup_table()    
+        bm.faces.ensure_lookup_table()    
+
+        for face_indices in tr.tolist() + qu.tolist():
+            bm.faces.new(tuple(bm.verts[index] for index in reversed(face_indices)))
+
+        bm.normal_update()
+        
+        bm.transform(root_prep.matrix_world.inverted())
+        bm.to_mesh(root_prep.data)
+        bm.free()
+        
+        del vdb_prep
+        
+        root_prep.hide = False
+        bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
+        
+    del vdb_reduction
+        
 class AITeeth_OT_root_prep(bpy.types.Operator):
     """Create roots and preparations from teeth"""
     bl_idname = "ai_teeth.root_preps"
@@ -511,7 +591,9 @@ class AITeeth_OT_root_prep(bpy.types.Operator):
     
     root_type = bpy.props.EnumProperty(name = 'Root Style', items = (('FLAT','FLAT','FLAT'), ('SMOOTH','SMOOTH','SMOOTH')))
     prep_teeth = bpy.props.BoolProperty(name = 'Add Prep', default = True)
-    shoulder_width = bpy.props.FloatProperty(name = 'Shoulder Width', default = 1.0)
+    prep_type = bpy.props.EnumProperty(name = 'Prep Type', default = 'THIMBLE', items = (('THIMBLE','THIMBLE','THIMBLE'), ('ANATOMIC','ANATOMIC','ANATOMIC')))
+    shoulder_width = bpy.props.FloatProperty(name = 'Shoulder Width', default = 0.7)
+    anatomic_reduction = bpy.props.FloatProperty(name = 'Anatomic Reduction', default = 1.0)
     taper = bpy.props.FloatProperty(name = 'Taper', default = 7.0, min = 0.0, max = 15.0)
     
     
@@ -548,7 +630,9 @@ class AITeeth_OT_root_prep(bpy.types.Operator):
             
         for ob in obs:
             print('\n\n\n PREP' + ob.name)
-            make_root_prep(ob, flat_root= self.root_type == 'FLAT')
+            make_root_prep(ob, flat_root= self.root_type == 'FLAT',
+                           prep_width= self.shoulder_width,
+                           taper = self.taper)
             print('\n\n\n')
             bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
 
@@ -565,6 +649,28 @@ class AITeeth_OT_root_prep(bpy.types.Operator):
         for ob in obs:
             ob.hide = False
         
+        
+        if self.prep_type == 'ANATOMIC':
+            for ob in obs:
+                ob.select = True
+            
+            make_reduction_shells(context, self.anatomic_reduction)
+            
+            upper_reduction = bpy.data.objects.get('Upper Reduction')
+            lower_reduction = bpy.data.objects.get('Lower Reduction')
+            
+            upper_teeth = [ob for ob in obs if data_tooth_label(ob.name.split(' ')[0]) in tooth_numbering.upper_teeth]
+            lower_teeth = [ob for ob in obs if data_tooth_label(ob.name.split(' ')[0]) in tooth_numbering.lower_teeth]
+     
+            if upper_reduction:
+                reduce_and_remesh_preps(upper_teeth, upper_reduction)
+            
+            bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
+            
+            if lower_reduction:
+                reduce_and_remesh_preps(lower_teeth, lower_reduction)
+            
+            bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
         
         #TODO, set up the modal operator
         return {'FINISHED'}

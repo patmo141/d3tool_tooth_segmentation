@@ -27,7 +27,7 @@ def get_convex(teeth):
 
        
 def get_roots(teeth):
-    roots = [bpy.data.objects.get(ob.name + " root_prep") for ob in teeth if ob.name + " root_prep" in bpy.data.objects]
+    roots = [bpy.data.objects.get(ob.name.split(' ')[0] + " root_prep") for ob in teeth if ob.name + " root_prep" in bpy.data.objects]
     return roots
   
   
@@ -130,9 +130,7 @@ class AITeeth_OT_tooth_vis_popup(bpy.types.Operator):
             rowLL.prop(ob, "hide", text = ob.name)
 
 
-
-            
-            
+           
 class AITeeth_OT_tooth_sel_popup(bpy.types.Operator):
     """Process model for shell reduction"""
     bl_idname = "ai_teeth.tooth_sel_popup"
@@ -325,8 +323,8 @@ class AITeeth_OT_tooth_sel_popup(bpy.types.Operator):
 def register():
     bpy.utils.register_class(AITeeth_OT_tooth_vis_popup)
     bpy.utils.register_class(AITeeth_OT_tooth_sel_popup)
-    
+
 
 def unregister():
-    bpy.utils.register_class(AITeeth_OT_tooth_vis_popup)
-    bpy.utils.register_class(AITeeth_OT_tooth_sel_popup)
+    bpy.utils.unregister_class(AITeeth_OT_tooth_vis_popup)
+    bpy.utils.unregister_class(AITeeth_OT_tooth_sel_popup)

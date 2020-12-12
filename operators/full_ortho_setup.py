@@ -34,8 +34,8 @@ from mathutils.kdtree import KDTree
 from d3lib.bmesh_utils.bmesh_delete import bmesh_fast_delete
 from d3lib.geometry_utils.bound_box_utils import get_bbox_center
 from d3lib.bmesh_utils.bmesh_utilities_common import bmesh_join_list, increase_vert_selection, new_bmesh_from_bmelements
-from d3lib.metaballs.vdb_tools import remesh_bme
-from d3lib.geometry_utils.transformations import r_matrix_from_principal_axes
+from d3guard.subtrees.metaballs.vdb_tools import remesh_bme
+from d3lib.geometry_utils.transformations import r_matrix_from_principal_axes, random_axes_from_normal
 
 from ..tooth_numbering import data_tooth_label
 from .. import tooth_numbering
@@ -48,6 +48,21 @@ epsilon = .001
 
 from .simple_base import simple_base_bme
 
+
+def create_empty(name, loc):
+    
+    ob = bpy.data.objects.new(name, None)
+    Mx = Matrix.Translation(loc)
+    ob.matrix_world = Mx
+    bpy.context.scene.objects.link(ob)
+    
+    
+def create_bme_ob(name, bme):
+    me = bpy.data.meshes.new(name)
+    ob = bpy.data.objects.new(name, me)
+    bme.to_mesh(me)
+    bpy.context.scene.objects.link(ob)
+    
     
 def convexify_object(context, ob):
     '''
@@ -216,10 +231,10 @@ def main_function(context,
                   trim = True):
     
     if use_select:
-        selected_teeth = [ob for ob in bpy.context.scene.objects if 'tooth' in ob.data.name and ob.select == True]
+        selected_teeth = [ob for ob in bpy.context.scene.objects if ob.type == 'MESH' and 'tooth' in ob.data.name and ob.select == True]
     
     else:
-        selected_teeth = [ob for ob in bpy.context.scene.objects if 'tooth' in ob.data.name]
+        selected_teeth = [ob for ob in bpy.context.scene.objects if ob.type == 'MESH' and 'tooth' in ob.data.name]
     
     upper_teeth = [ob for ob in selected_teeth if data_tooth_label(ob.name) in tooth_numbering.upper_teeth]
     lower_teeth = [ob for ob in selected_teeth if data_tooth_label(ob.name) in tooth_numbering.lower_teeth]
@@ -250,6 +265,7 @@ def main_function(context,
         
         bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
         
+        upper_gingiva.hide = False
         
     if lower_ob and len(lower_teeth):
         print('DOING LOWER TEETH')
@@ -268,8 +284,8 @@ def main_function(context,
         
         bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
     
-    lower_gingiva.hide = False
-    upper_gingiva.hide = False
+        lower_gingiva.hide = False
+    
     for ob in bpy.data.objects:
         if 'Convex' in ob.name:
             ob.hide = False    
@@ -290,7 +306,11 @@ def ortho_setup(base_ob, teeth, add_base = True, auto_trim = True):
         
     #BVH for filtration based on original geometry
     bme_base = bmesh.new()
-    bme_base.from_mesh(base_ob.data)
+    mx_base = base_ob.matrix_world
+    imx_base = mx_base.inverted()
+    base_ob.data.transform(mx_base)
+    bme_base.from_mesh(base_ob.data)  #in world coordinates
+    base_ob.data.transform(imx_base) #put the data back in it's local coords
     bvh_base = BVHTree.FromBMesh(bme_base)
 
     
@@ -299,29 +319,52 @@ def ortho_setup(base_ob, teeth, add_base = True, auto_trim = True):
     bvhs = []
     bmes_convex = []
     centers = {}
+    convex_bme = bmesh.new()  #a mesh join of all convex teeth
+    
     for i, ob in enumerate(convex_teeth):
         
         center = get_bbox_center(ob)
-        mx = Matrix.Translation(center)
+        MX = Matrix.Translation(center)
+        
+        
+        mx_world = ob.matrix_world
+        imx_world = mx_world.inverted()
+        
+        local_center = imx_world * center
+        RS = mx_world.to_3x3().to_4x4()  #Rotation, Scale
+        
+        mx = Matrix.Translation(local_center)
         imx = mx.inverted()
         centers[i] = center
         kd_convex.insert(center, i)
+        
+        ob.data.transform(mx_world)  #Temporarly put the data in world coordinates
+        
         bme = bmesh.new()
-        bme.from_mesh(ob.data)
-        bme.transform(ob.matrix_world)
+        bme.from_mesh(ob.data)  #pull the data in to the individual bmesh (it's in world coordinates)
+        convex_bme.from_mesh(ob.data) #pull the data in to the combine bmesh (it's in world coordinates)
+        bme.normal_update()  #AHH, normals are not transformed unless recalced manually
         
         bvh = BVHTree.FromBMesh(bme)
         bvhs.append(bvh)
         bmes_convex.append(bme)
         
-        #center the teeth while we are at it but after bmesh and bvh extraction
-        #to keep everything in world coords
-        ob.data.transform(imx)
-        ob.matrix_world = mx  #right?
         
+        ob.data.transform(imx_world)  #Put the data back where it was originally.
+        ob.data.transform(RS * imx)  #apply the rotation and scale and center it locally
+        ob.matrix_world = MX 
+        
+        
+        ob.update_tag()  #MAYBE FIX
+    
+    bpy.context.scene.update()
+      
     kd_convex.balance()
     
-    convex_bme = bmesh_join_list(bmes_convex, normal_update= True)
+    convex_bme.verts.ensure_lookup_table()
+    convex_bme.faces.ensure_lookup_table()
+    convex_bme.normal_update()
+    
     for v in convex_bme.verts:
         loc, no, ind, d3 = bvh_base.find_nearest(v.co)
                 
@@ -329,7 +372,7 @@ def ortho_setup(base_ob, teeth, add_base = True, auto_trim = True):
             v.co += .25 * v.normal
             
     solid_remesh = remesh_bme(convex_bme, 
-                  isovalue = 0.03, 
+                  isovalue = 0.1, 
                   adaptivity = 0.0, 
                   only_quads = False, 
                   voxel_size = .3,
@@ -344,7 +387,6 @@ def ortho_setup(base_ob, teeth, add_base = True, auto_trim = True):
     bpy.context.scene.objects.link(new_ob2)
     solid_remesh.to_mesh(new_me2)
     
-    
     if auto_trim:
         bvh_trim = BVHTree.FromBMesh(solid_remesh)
         
@@ -357,8 +399,8 @@ def ortho_setup(base_ob, teeth, add_base = True, auto_trim = True):
         
         
     if add_base:
-        Z = base_ob.matrix_world.inverted().to_quaternion() * Vector((0,0,1))
-        simple_base_bme(bme_base, Z, base_height = 6.0,
+        Z = base_ob.matrix_world.to_quaternion() * Vector((0,0,1))  #z axis in world coordiantes
+        simple_base_bme(bme_base, Vector((0,0,1)), base_height = 6.0,
                 do_clean_geom = True,
                 close_holes = True,
                 relax_border = True)
@@ -385,7 +427,13 @@ def ortho_setup(base_ob, teeth, add_base = True, auto_trim = True):
         if len(neighbors) > 2:  #remember it's going to find itself as the closest element in the KDTree so we wane the 1 and 2, not the 0 and 1
             co1, n1, _ = neighbors[1]
             co2, n2, _ = neighbors[2]
-        
+            
+            #diagnostic visualization help for debugging
+            #create_empty(convex_teeth[i].name + 'co1', co1)
+            #create_empty(convex_teeth[i].name + 'co2', co2)
+            #create_empty(convex_teeth[i].name + 'center', center)
+            #create_bme_ob(convex_teeth[i].name + 'bme preview', bme)
+            
             interval = time.time()
             for v in bme.verts:
                 
@@ -447,6 +495,14 @@ def ortho_setup(base_ob, teeth, add_base = True, auto_trim = True):
             Y = Z.cross(X)
             X = Y.cross(Z) #put mes/dis perp to root
             
+            X.normalize()
+            Y.normalize()
+            print('AVERAGE  NORMAL MATRIX STUFF')
+            print(X.length)
+            print(Y.length)
+            print(Z.length)
+            
+            #X,Y,Z = random_axes_from_normal(Z)
             Rmx = r_matrix_from_principal_axes(X,Y,Z).to_4x4()
         
             
@@ -456,6 +512,7 @@ def ortho_setup(base_ob, teeth, add_base = True, auto_trim = True):
             root_empty.empty_draw_size = 12
             bpy.context.scene.objects.link(root_empty)
             root_empty.parent = convex_teeth[i]
+            #R_parent = convex_teeth[i].matrix_world.to_quaternion().to_matrix().to_4x4()
             root_empty.matrix_world = Tmx * Rmx
             
             #bme.to_mesh(convex_teeth[i].data)
@@ -463,7 +520,7 @@ def ortho_setup(base_ob, teeth, add_base = True, auto_trim = True):
     
             bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
     
-    
+    bme_base.transform(imx_base)
     mat = bpy.data.materials.get("Gingiva Material")
     if mat is None:
         # create material
@@ -483,6 +540,7 @@ def ortho_setup(base_ob, teeth, add_base = True, auto_trim = True):
             uper_ging = bpy.data.objects.new('Upper Gingiva', me)
             bpy.context.scene.objects.link(ging)
             ob.matrix_world = base_ob.matrix_world
+            
             bme_base.to_mesh(me)
         
         if len(ging.data.vertex_colors):
@@ -554,4 +612,4 @@ def register():
     bpy.utils.register_class(AITeeth_OT_ortho_setup)
 
 def unregister():
-    bpy.utils.register_class(AITeeth_OT_ortho_setup)
+    bpy.utils.unregister_class(AITeeth_OT_ortho_setup)

@@ -226,7 +226,7 @@ class D3Tool_OT_composite_attachment_on_tooth(bpy.types.Operator):
     bl_label = "Composite Attachment 2"
     bl_options = {'REGISTER', 'UNDO'}
     
-    use_preset = bpy.props.BoolProperty(default = False)
+    use_preset = bpy.props.BoolProperty(default = True)
     button_preset = bpy.props.EnumProperty(name = 'Attachment Preset', items = attachment_items)
     
     wi = bpy.props.FloatProperty(default = 2.0, min = 1.0, max = 6.0, description = 'Incisal width')

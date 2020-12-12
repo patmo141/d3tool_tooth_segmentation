@@ -69,5 +69,5 @@ def register():
     
      
 def unregister():
-    bpy.utils.register_class(AITEETH_OT_segment_maxillary_teeth)
-    bpy.utils.register_class(AITEETH_OT_segment_mandibular_teeth)
+    bpy.utils.unregister_class(AITEETH_OT_segment_maxillary_teeth)
+    bpy.utils.unregister_class(AITEETH_OT_segment_mandibular_teeth)

@@ -10,7 +10,7 @@ import time
 
 from mathutils.bvhtree import BVHTree
 
-from ..subtrees.metaballs.vdb_tools import remesh_bme
+from d3guard.subtrees.metaballs.vdb_tools import remesh_bme
 from ..subtrees.bmesh_utils.bmesh_utilities_common import bmesh_join_list
 
 
@@ -126,5 +126,5 @@ def register():
 
 
 def unregister():
-    bpy.utils.register_class(AITeeth_OT_keyframe_to_solid)
+    bpy.utils.unregister_class(AITeeth_OT_keyframe_to_solid)
     

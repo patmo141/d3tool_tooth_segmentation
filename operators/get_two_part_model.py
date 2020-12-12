@@ -34,7 +34,7 @@ from mathutils.kdtree import KDTree
 from d3lib.bmesh_utils.bmesh_delete import bmesh_fast_delete
 from d3lib.geometry_utils.bound_box_utils import get_bbox_center
 from d3lib.bmesh_utils.bmesh_utilities_common import bmesh_join_list, increase_vert_selection, new_bmesh_from_bmelements
-from d3lib.metaballs.vdb_tools import remesh_bme
+from d3guard.subtrees.metaballs.vdb_tools import remesh_bme
 
 from ..tooth_numbering import data_tooth_label
 from .. import tooth_numbering
@@ -536,4 +536,4 @@ def register():
     bpy.utils.register_class(AITeeth_OT_two_part_model)
 
 def unregister():
-    bpy.utils.register_class(AITeeth_OT_two_part_model)
+    bpy.utils.unregister_class(AITeeth_OT_two_part_model)

@@ -36,9 +36,8 @@ from mathutils.kdtree import KDTree
 
 from d3lib.bmesh_utils.bmesh_utilities_common import bmesh_join_list
 from d3lib.bmesh_utils.bmesh_delete import bmesh_fast_delete
-from d3lib.metaballs.vdb_tools import remesh_bme
+from d3guard.subtrees.metaballs.vdb_tools import remesh_bme
 
-from d3lib.metaballs.vdb_tools import remesh_bme
 from d3lib.bmesh_utils.bmesh_utilities_common import bmesh_join_list
 from d3lib.geometry_utils.bound_box_utils import get_bbox_center
 
@@ -48,6 +47,13 @@ pre_offset = -.35
 middle_factor = .75
 epsilon = .001
 
+
+def create_bme_ob(name, bme):
+    me = bpy.data.meshes.new(name)
+    ob = bpy.data.objects.new(name, me)
+    bme.to_mesh(me)
+    bpy.context.scene.objects.link(ob)
+    
 def convexify_object(context, ob):
     '''
     uses the convex hull to fill in the bottom
@@ -246,17 +252,11 @@ def make_reduction_shells(context, depth):
         
         thimble_preps = []
         original_teeth = []
+        
+        margin_bme = bmesh.new()
         for c_ob in convex_teeth:
             
-            ob = bpy.data.objects.get(c_ob.name.split(' ')[0])
-            if ob:
-                original_teeth.append(ob)
-        
-                ob.data.update()
-                mod = ob.modifiers.new('Solidify', type = 'SOLIDIFY')
-                mod.thickness = 2.0 * depth
-                mod.offset = 0.0
-                
+            margin_ob = None
             for child in c_ob.children:
                 if 'thimble_prep' in child.name:
                     thimble_preps.append(child)
@@ -264,8 +264,57 @@ def make_reduction_shells(context, depth):
                     mod = child.modifiers.new('Solidify', type = 'SOLIDIFY')
                     mod.thickness = depth
                     mod.offset = 1.0
+                    
+                if 'margin_line' in child.name:
+                    mx = child.matrix_world
+                    imx = mx.inverted()
+                    
+                    child.data.transform(mx)  #world coord
+                    margin_bme.from_mesh(child.data) #append to bmesh
+                    child.data.transform(imx) #put back
+                    margin_ob = child
+                    
+            ob = bpy.data.objects.get(c_ob.name.split(' ')[0])
+            if ob:
+                original_teeth.append(ob)
+
+                ob.data.update()
+                
+                if margin_ob:
+                    if "Margin Prox" not in ob.vertex_groups:
+                        vg = ob.vertex_groups.new(name = "Margin Prox")
+                    else:
+                        vg = ob.vertex_groups.get('Margin Prox')
+                    vg.add([i for i in range(0,len(ob.data.vertices))], 0, type = 'REPLACE')
+                
+                    pmod = ob.modifiers.new('Margin Prox', 'VERTEX_WEIGHT_PROXIMITY')
+        
+                    pmod.target = margin_ob
+                    pmod.vertex_group = "Margin Prox"
+                    pmod.proximity_mode = 'GEOMETRY'
+                    pmod.proximity_geometry = {'VERTEX'}
+                    pmod.min_dist = 0.0 #4.5
+                    pmod.max_dist = 2.5
+                    pmod.falloff_type = 'LINEAR' #'SMOOTH' #'SHARP' #'ICON_SPHERECURVE'
+                    pmod.show_expanded = False
+                
+                
+                mod = ob.modifiers.new('Solidify', type = 'SOLIDIFY')
+                mod.thickness = 2.0 * depth
+                mod.offset = 0.0
+                if "Margin Prox" in ob.vertex_groups:
+                    mod.vertex_group = "Margin Prox"
+                    mod.thickness_vertex_group = .15
             
-            
+        
+        margin_bme.verts.ensure_lookup_table()
+        margin_bme.verts.index_update()
+        #filter the margin
+        kd_margin = KDTree(len(margin_bme.verts))
+        for v in margin_bme.verts:
+            kd_margin.insert(v.co, v.index)
+        kd_margin.balance()
+           
         kd_convex = KDTree(len(convex_teeth))
         bvhs = []
         bmes_convex = []
@@ -302,11 +351,19 @@ def make_reduction_shells(context, depth):
                 _, n2, _ = neighbors[2]
             
                 for v in bme.verts:
+                    #_,_, d3 = kd_margin.find(v.co)
+                    
+                    #if d3 < .5 * depth:
+                    #    to_delete.append(v)
+                    #    continue
+                        
                     _, _, _, d1 = bvhs[n1].find_nearest(v.co)
                     _, _, _, d2 = bvhs[n2].find_nearest(v.co)
-        
+                    
                     if d1 > .45 and d2 > .45:# and abs(v.normal.dot(plane_no)) > .45:  #Let's see
                         to_delete.append(v)
+                        continue
+                    
                 
                 print('deleting %i out of %i verts' % (len(to_delete), len(bme.verts)))
                 bmesh_fast_delete(bme, verts = to_delete)
@@ -330,11 +387,11 @@ def make_reduction_shells(context, depth):
         bme_offset = bmesh_join_list(bmes + [bme_contacts])
         
         final_bme = remesh_bme(bme_offset, 
-                    isovalue = 0.0, 
+                    isovalue = 0.1, 
                     adaptivity = 0.0, 
                     only_quads = False, 
-                    voxel_size = .2,
-                    filter_iterations = 2,
+                    voxel_size = .175,
+                    filter_iterations = 1,
                     filter_width = 4,
                     filter_sigma = 1.0,
                     grid = None,
@@ -350,9 +407,12 @@ def make_reduction_shells(context, depth):
 
 class AITeeth_OT_reduction_shell(bpy.types.Operator):
     """Process model for shell reduction"""
-    bl_idname = "ai_teeth.reduction_shell"
-    bl_label = "Reduction Shell"
+    bl_idname = "ai_teeth.prep_original_model"
+    bl_label = "Prep Original Model"
     bl_options = {'REGISTER', 'UNDO'}
+    
+    tooth_selection = bpy.props.EnumProperty(name = 'Tooth Selection', items = (('ALL_TEETH','ALL_TEETH','ALL_TEETH'), ('SELECTED_TEETH','SELECTED_TEETH','SELECTED_TEETH')))
+
     thickness = bpy.props.FloatProperty(default = 1.0, min = 0.5, max = 2.5)
 
     @classmethod
@@ -365,7 +425,19 @@ class AITeeth_OT_reduction_shell(bpy.types.Operator):
         
     def execute(self, context):
         
+        if self.tooth_selection == 'SELECTED_TEETH':
         
+            selected_teeth = [ob for ob in bpy.context.scene.objects if ob.type == 'MESH' and 'Convex' in ob.name and ob.select]
+        
+        else:
+            selected_teeth = [ob for ob in bpy.context.scene.objects if ob.type == 'MESH' and 'Convex' in ob.name]
+            
+            
+        upper_teeth = [ob for ob in selected_teeth if data_tooth_label(ob.name.split(' ')[0]) in tooth_numbering.upper_teeth]
+        lower_teeth = [ob for ob in selected_teeth if data_tooth_label(ob.name.split(' ')[0]) in tooth_numbering.lower_teeth]
+    
+    
+    
         make_reduction_shells(context, self.thickness)
         
         upper_ob = bpy.data.objects.get(context.scene.d3ortho_upperjaw)
@@ -406,5 +478,5 @@ def register():
     
 
 def unregister():
-    bpy.utils.register_class(AITeeth_OT_reduction_shell)
+    bpy.utils.unregister_class(AITeeth_OT_reduction_shell)
     

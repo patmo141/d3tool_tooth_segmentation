@@ -349,7 +349,7 @@ class OPENDENTAL_OT_add_bone_roots(bpy.types.Operator):
         return {'RUNNING_MODAL'}
 
 
- 
+#TODO, this
 class OPENDENTAL_OT_confirm_transforms_for_teeth (bpy.types.Operator):
     """Confirm tooth orientations"""
     bl_idname = "opendental.confirm_tooth_orientations"
@@ -368,18 +368,38 @@ class OPENDENTAL_OT_confirm_transforms_for_teeth (bpy.types.Operator):
         for ob in teeth:
             name = ob.name.split(' ')[0] + ' root_empty'
             axis = bpy.data.objects.get(name)
-            mx = axis.matrix_world.copy()
-            rmx = mx.to_3x3().to_4x4()
-            irmx = rmx.inverted()
             
+            mx_axis = axis.matrix_world.copy()
+            mx_object = ob.matrix_world.copy()
+            
+            #store the chidlren
+            children_mx = {}
+            for child in ob.children:
+                children_mx[child] = child.matrix_world.copy()
+                
+            #Get current object transform inforation
             T,R,S = ob.matrix_world.decompose()
-            
             Rmx = R.to_matrix().to_4x4()
             Tmx = Matrix.Translation(T)
+            Smx = Matrix.Identity(4)
+            Smx[0][0], Smx[1][1], Smx[2][2] = S[0], S[1], S[2]
+            
+            #apply rotation
+            ob.data.transform(Rmx)
+            
+            #apply inverse axis rotation
+            rmx = mx_axis.to_3x3().to_4x4()
+            irmx = rmx.inverted()
             ob.data.transform(irmx)
             
-            ob.matrix_world = Tmx * rmx * Rmx
-            axis.matrix_world = mx  #because axis is a child of the tooth
+            #restore position and scale w/ new rotation
+            ob.matrix_world = Tmx * rmx
+            
+            #put the children back
+            for child in ob.children:
+                child.matrix_world = children_mx[child]
+            
+            #axis.matrix_world = mx_axis  #because axis is a child of the tooth
         return {'FINISHED'}
     
 class OPENDENTAL_OT_empties_to_armature(bpy.types.Operator):
@@ -514,8 +534,8 @@ def link_ob_to_bone(jaw_ob, arm_ob):
             cons2 = pbone.constraints.new(type = 'LIMIT_ROTATION')
             cons2.owner_space = 'LOCAL'
             cons2.use_limit_y = True
-            cons2.min_y = -3 * math.pi/180
-            cons2.max_y = 3 * math.pi/180
+            cons2.min_y = -10 * math.pi/180
+            cons2.max_y = 10 * math.pi/180
     
     if "Non Movable" not in jaw_ob.vertex_groups:
         vg = jaw_ob.vertex_groups.new(name = "Non Movable")
@@ -532,7 +552,7 @@ def link_ob_to_bone(jaw_ob, arm_ob):
     mod.vertex_group = bone.name
     mod.proximity_mode = 'GEOMETRY'
     mod.min_dist = 0.0 #4.5
-    mod.max_dist = 7.0
+    mod.max_dist = 4.0
     mod.falloff_type = 'SHARP' #'SMOOTH' #'SHARP' #'ICON_SPHERECURVE'
     mod.show_expanded = False
     
