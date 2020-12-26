@@ -866,6 +866,9 @@ class AITeeth_OT_pre_process(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
 
+        if not context.scene.models_oriented:
+            return False
+        
         return True
         
     def execute(self, context):
@@ -892,7 +895,8 @@ class AITeeth_OT_pre_process(bpy.types.Operator):
             ob.select = True
             context.scene.objects.active = ob
             bake_salience_object(context, ob)
-            
+        
+        context.scene.models_processed = True    
         return {'FINISHED'}
         
             

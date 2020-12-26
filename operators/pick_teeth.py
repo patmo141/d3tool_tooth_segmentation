@@ -34,6 +34,8 @@ class AITEETH_OT_label_mandibular_teeth(bpy.types.Operator):
     
     @classmethod
     def poll(cls, context):
+        if not context.scene.models_oriented: return False
+        
         if context.scene.d3ortho_lowerjaw in bpy.data.objects:
             return True
         
@@ -48,7 +50,7 @@ class AITEETH_OT_label_mandibular_teeth(bpy.types.Operator):
         context.scene.objects.active = ob
         ob.select = True
         ob.hide = False
-        
+        bpy.ops.view3d.viewnumpad(type = 'TOP')
         bpy.ops.aiteeth.mark_tooth_locations("INVOKE_DEFAULT")
         
         return {'FINISHED'}
@@ -61,6 +63,9 @@ class AITEETH_OT_label_maxillary_teeth(bpy.types.Operator):
     
     @classmethod
     def poll(cls, context):
+        
+        if not context.scene.models_oriented: return False
+        
         if context.scene.d3ortho_upperjaw in bpy.data.objects:
             return True
         
@@ -74,7 +79,7 @@ class AITEETH_OT_label_maxillary_teeth(bpy.types.Operator):
         
         context.scene.objects.active = ob
         ob.select = True
-        
+        bpy.ops.view3d.viewnumpad(type = 'BOTTOM')
         bpy.ops.aiteeth.mark_tooth_locations("INVOKE_DEFAULT")
         
         return {'FINISHED'}
@@ -92,7 +97,6 @@ class AITEETH_OT_label_teeth(VIEW3D_OT_points_picker):
     def can_start(cls, context):
         
         if not context.object: return False
-        
         if context.object.name == context.scene.d3ortho_upperjaw: return True
         if context.object.name == context.scene.d3ortho_lowerjaw: return True
         
@@ -279,6 +283,11 @@ class AITEETH_OT_label_teeth(VIEW3D_OT_points_picker):
         bme.to_mesh(container_mesh)
         bme.free()
         
+        
+        if self.seg_type == 'MAX_PERM':
+            bpy.context.scene.upper_teeth_marked = True
+        if self.seg_type == 'MAND_PERM':
+            bpy.context.scene.lower_teeth_marked = True
         
     ####  Enhancing UI ############
     

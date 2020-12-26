@@ -14,6 +14,8 @@ from ..subtrees.addon_common.common.decorators import PersistentOptions
 from ..subtrees.addon_common.common import ui
 
 
+npassed = 0
+
 def in_region(reg, x, y):
     #first, check outside of area
     if x < reg.x: return False
@@ -99,12 +101,12 @@ def create_axis_vis():
  
          
         
-class D3Ortho_OT_adjust_axes(CookieCutter):
+class D3Ortho_OT_adjust_tooth_positions(CookieCutter):
     """ Allows easy adjustment of axes"""
-    operator_id    = "d3ortho.adjust_axes"
-    bl_idname      = "d3ortho.adjust_axes"
-    bl_label       = "Adjust Axes"
-    bl_description = "Use to adjust the long axis for optimal gingival sim"
+    operator_id    = "d3ortho.adjust_positions"
+    bl_idname      = "d3ortho.adjust_positions"
+    bl_label       = "Adjust Positions"
+    bl_description = "Use to adjust the positioning of the teeth"
     bl_space_type  = "VIEW_3D"
     bl_region_type = "TOOLS"
 
@@ -121,9 +123,6 @@ class D3Ortho_OT_adjust_axes(CookieCutter):
     @classmethod
     def can_start(cls, context):
         """ Start only if editing a mesh """
-        
-        if context.scene.dx_setup != True:
-            return False
         return True
 
     def start(self):
@@ -132,9 +131,10 @@ class D3Ortho_OT_adjust_axes(CookieCutter):
         bpy.ops.ed.undo_push()  # push current state to undo
         self.start_pre()
         
+        self.x_ray = False
+        self.rotation_point = 'ROOT'   #CROWN #CURSOR
         
-        #get or create axis vis
-        self.axis_vis = create_axis_vis()
+
         
         self.teeth = [ob for ob in bpy.data.objects if 'Convex' in ob.name]
         for ob in bpy.data.objects:
@@ -147,8 +147,10 @@ class D3Ortho_OT_adjust_axes(CookieCutter):
         
         
         bpy.context.space_data.show_manipulator = True
-        bpy.context.space_data.transform_manipulators = {'ROTATE'}
+        bpy.context.space_data.transform_manipulators = {'ROTATE','TRANSLATE'}
         bpy.context.space_data.transform_orientation = 'LOCAL'
+        v3d = bpy.context.space_data
+        v3d.pivot_point = 'CURSOR'
         
         self.set_view()
         
@@ -160,81 +162,43 @@ class D3Ortho_OT_adjust_axes(CookieCutter):
 
     def set_view(self):
         
-        last_root = None
+        last_tooth = None
         for ob in bpy.data.objects:
             ob.hide = True
             ob.hide_select = True
             ob.select = False
             
-            if " Convex" in ob.name or " root_empty" in ob.name:
+            if " Convex" in ob.name or " root_prep" in ob.name:
                 ob.hide = False
+                ob.hide_select = False
+                if 'Convex' not in ob.name:
+                    ob.hide_select = True
+                else:
+                    last_tooth = ob
+            elif 'Gingiva' in ob.name:
+                ob.hide = False
+                ob.hide_select = True
             else:
                 ob.hide = True
-                
-            if " root_empty" in ob.name:
-                ob.hide_select = False
-                last_root = ob
-                
-                
+
+        last_tooth.select = True
+        bpy.context.scene.objects.active = last_tooth
         
         
-        last_root.select = True
-        bpy.context.scene.objects.active = last_root
-        
-        
-        self.axis_vis.parent = last_root
-        self.axis_vis.matrix_world = last_root.matrix_world
-        self.axis_vis.hide_select = False
-        self.axis_vis.select = True
-        self.axis_vis.hide = False
-       
-        
-        #prevent clicking on these objects
-        self.axis_vis.hide_select = True
-        self.axis_vis.select = False
         
         
     def end_commit(self):
         """ Commit changes to mesh! """
-        
-        for ob in bpy.data.objects:
-            ob.show_x_ray = False
-            
-        bpy.context.scene.objects.unlink(self.axis_vis)
-        
-        upper_ob = bpy.data.objects.get(bpy.context.scene.d3ortho_upperjaw)
-        lower_ob = bpy.data.objects.get(bpy.context.scene.d3ortho_lowerjaw)
-        
-        if upper_ob:
-            upper_ob.hide = False
-            
-        if lower_ob:
-            lower_ob.hide = False
-    
-        for ob in self.teeth:
-            ob.hide_select = False
-            ob.hide = False
-            
-        
-        self.end_commit_post()
-        
-        bpy.ops.opendental.confirm_tooth_orientations()
-        bpy.ops.d3ortho.empties_to_armature()
-        bpy.ops.opendental.set_roots_parents()
-        
-        bpy.context.scene.frame_set(0)
-        
         bpy.ops.opendental.set_movement_keyframe()
-        
-        bpy.context.scene.frame_set(20)
-        bpy.context.scene.frame_end = 20
-        
-        bpy.context.scene.adjust_axes = True
-        
+        v3d = bpy.context.space_data
+        v3d.pivot_point = 'MEDIAN_POINT'
         
     def end_cancel(self):
         """ Cancel changes """
         #bpy.ops.object.mode_set(mode=self.starting_mode)
+        
+        v3d = bpy.context.space_data
+        v3d.pivot_point = 'MEDIAN_POINT'
         bpy.ops.ed.undo()   # undo everything
    
     def end(self):
@@ -264,7 +228,9 @@ class D3Ortho_OT_adjust_axes(CookieCutter):
         if event.type not in {'LEFTMOUSE', 'MOUSEMOVE', 'RIGHTMOUSE'}:
             return False
         
-        print('passing through')
+        global npassed
+        npassed += 1
+        print('passing through %i' % npassed)
         return True
 
     ###################################################
@@ -300,30 +266,47 @@ class D3Ortho_OT_adjust_axes(CookieCutter):
         #if self.actions.pressed("commit"):   
         #    self.end_commit()
         #    return
-
+        v3d = bpy.context.space_data
 
         if self.actions.released("select"):  #upon selection, snap the axis vis to the root
             for ob in bpy.data.objects:
                 ob.show_x_ray = False
             
-            self.axis_vis.parent = bpy.context.object
-            self.axis_vis.matrix_world = bpy.context.object.matrix_world
             
-            if bpy.context.object.parent != None:
-                bpy.context.object.parent.show_x_ray = True
-            self.axis_vis.show_x_ray = True
+            q = bpy.context.object.matrix_world.to_quaternion()
+            Z = q * Vector((0,0,1))
+            
+            if self.rotation_point == 'ROOT':
+                bpy.context.scene.cursor_location = bpy.context.object.location + 8 * Z
+                v3d.pivot_point = 'CURSOR'
+                
+            elif self.rotation_point == 'CROWN':
+                bpy.context.scene.cursor_location = bpy.context.object.location
+                v3d.pivot_point = 'INDIVIDUAL_ORIGINS'
+            else:
+                print('CURSOR')       
+            
+            bpy.context.object.show_x_ray = self.x_ray
             
             
         if self.actions.pressed("commit"):
             self.done()
             return
         
-        
         if self.actions.pressed("cancel"):
             self.done(cancel=True)
             return
         
     
+    def set_crown(self):
+        self.rotation_point = 'CROWN'
+    def set_root(self):
+        self.rotation_point = 'ROOT'
+        
+    def set_cursor(self):
+        self.rotation_point = 'CURSoR'
+        
+        
     def ui_setup(self):
         
         win_next_back = self.wm.create_window(None, {'pos':2, "vertical":False, "padding":15, 'movable':True, 'bgcolor':(0.50, 0.50, 0.50, 0.0), 'border_color':(0.50, 0.50, 0.50, 0.9), "border_width":4.0})
@@ -336,10 +319,27 @@ class D3Ortho_OT_adjust_axes(CookieCutter):
         confirm_button = next_back_container.add(ui.UI_Button('Confirm', self.done, margin = 10))
         confirm_button.label.fontsize = 20    
         
+        #TOOLS Window
+        win_tools = self.wm.create_window('Edit Position Tools', {'pos':7, 'movable':True, 'bgcolor':(0.50, 0.50, 0.50, 0.90)})
+        
+        tools_container = win_tools.add(ui.UI_Container())
+        tools_container.rounded_background = True
+        
+        
+        tweak_tools = tools_container.add(ui.UI_Frame('Rotation Origin'))
+        rb = tweak_tools.add(ui.UI_Button('ROOT', self.set_root, margin = 3))
+        rb.fontsize = 14
+        cb = tweak_tools.add(ui.UI_Button('CROWN', self.set_crown, margin = 3))
+        cb.fontsize = 14
+        crb = tweak_tools.add(ui.UI_Button('CURSOR', self.set_cursor, margin = 3))
+        crb.fonsize = 14
+        
+        
+        
         
 def register():
-    bpy.utils.register_class(D3Ortho_OT_adjust_axes)
+    bpy.utils.register_class(D3Ortho_OT_adjust_tooth_positions)
     
 def unregister():    
-    bpy.utils.unregister_class(D3Ortho_OT_adjust_axes)
+    bpy.utils.unregister_class(D3Ortho_OT_adjust_tooth_positions)
     

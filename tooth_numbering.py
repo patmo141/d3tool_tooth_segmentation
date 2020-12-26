@@ -76,6 +76,79 @@ univ_to_FDI['T'] = '85'
 FDI_to_univ = {v: k for k, v in univ_to_FDI.items()}
 
 
+def mes_dis_relation(a, b):
+    '''
+    only takes permanent tooth labels in preferencial nomenclature
+    
+    returns the relationship between teeth a and b
+    
+    returns mesial if a is mesial to b
+    returns distal if a is distal to b
+    '''
+    
+    #get the label in "univeral 1 to 32 system"
+    name_a = data_tooth_label(a)
+    name_b = data_tooth_label(b)
+    
+    if name_a == name_b:
+        return -1
+    
+    #just do all the scenarios
+    if name_a in upper_perm and name_b not in upper_perm:
+        print("ERROR, teeth not in same arch")
+        return -1
+    if name_a in lower_perm and name_b not in lower_perm:
+        print("ERROR, teeth not in same arch")
+        return -1
+    
+    #UPPER RIGHT + UPPER RIGHT
+    if name_a in upper_right and name_b in upper_right:
+        if int(name_a) < int(name_b):
+            return 'DISTAL'
+        else:
+            return 'MESIAL'
+    #UPPER RIGHT to UPPER LEFT    
+    if name_a in upper_right and name_b in upper_left:
+        return 'MESIAL'
+    
+    #UPPER LEFT to UPPER LEFT  
+    if name_a in upper_left and name_b in upper_left:
+        if int(name_a) > int(name_b):
+            return 'DISTAL'
+        else:
+            return 'MESIAL'
+        
+    #UPPER LEFT to UPPER RIGHT   
+    if name_a in upper_right and name_b in upper_left:
+        return 'MESIAL'
+        
+    
+    #LOWER LEFT + LOWER LEFT
+    if name_a in lower_left and name_b in lower_left:
+        if int(name_a) < int(name_b):
+            return 'DISTAL'
+        else:
+            return 'MESIAL'
+    #LOWER LEFT to LOWER RIGHT  
+    if name_a in lower_left and name_b in lower_right:
+        return 'MESIAL'
+    
+    #LOWER RIGHT to LOWER RIGHT  
+    if name_a in lower_right and name_b in lower_right:
+        if int(name_a) > int(name_b):
+            return 'DISTAL'
+        else:
+            return 'MESIAL'
+        
+    #LOWER RIGHT LEFT to LOWER LEFT   
+    if name_a in lower_right and name_b in lower_left:
+        return 'MESIAL'
+    
+    print('unacounted for')
+    return -1
+    
+    
+
 def uni_to_fdi(tooth_label):
     
     if tooth_label not in univ_to_FDI:

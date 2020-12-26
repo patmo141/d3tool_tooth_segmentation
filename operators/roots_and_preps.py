@@ -19,7 +19,7 @@ from ..subtrees.bmesh_utils.bmesh_utilities_common import bme_rip_vertex, bbox_c
 from ..subtrees.bmesh_utils.bmesh_utilities_common import edge_loops_from_bmedges_topo, offset_bmesh_edge_loop, collapse_ed_simple
 from ..subtrees.geometry_utils.loops_tools import relax_loops_util
 from ..subtrees.geometry_utils.transformations import clockwise_loop
-
+from ..bmesh_fns import bmesh_loose_parts_faces
 from ..tooth_numbering import data_tooth_label
 from .. import tooth_numbering
 
@@ -84,6 +84,11 @@ def fast_bridge(bme, loop0, loop1, Z):
         
         end_type = None
         if l_tri_a <= l_quad and l_tri_a < l_tri_b:
+            
+            if len(set([v0, v1, v2])) != 3:
+                print('FAILUER')
+                continue
+            
             bme.faces.new((v0, v2, v1))
             end_type = "Tri A"
             print('new_face TRIANGLE A iteration %i %i %i' % (iteration, i0, i1))
@@ -97,7 +102,9 @@ def fast_bridge(bme, loop0, loop1, Z):
         elif l_tri_b <= l_quad and l_tri_b < l_tri_a:
             
             print('new_face TRIANGLE B iteration  %i %i %i' % (iteration, i0, i1))
-    
+            if len(set([v0, v2, v3])) != 3:
+                print('FAILUER')
+                continue
             bme.faces.new((v0, v2, v3))
             end_type = "Tri B"
             v2 = loop1[0][next_v1(i1 + offset)]
@@ -110,6 +117,8 @@ def fast_bridge(bme, loop0, loop1, Z):
         elif l_quad <= l_tri_a and l_quad <= l_tri_b:
             
             print('new_face QUAD B iteration %i %i %i' % (iteration, i0, i1))
+            if len(set([v0, v1, v2, v3])) != 4:
+                print('FAILUER')
             bme.faces.new((v0, v2, v3, v1))
             end_type = "QUAD"
             v0 = loop0[0][next_v0(i0)]
@@ -225,7 +234,8 @@ def make_root_prep(ob, flat_root = True, root_length = 8.0, prep_width = .75, ta
     new_name = ob.name.split(' ')[0] + ' root_prep' 
     if new_name in bpy.data.objects:
         new_ob = bpy.data.objects.get(new_name)
-        new_me = new_ob.data   
+        new_me = new_ob.data
+        new_ob.hide = False
     else:
         new_me = bpy.data.meshes.new(new_name)
         new_ob = bpy.data.objects.new(new_name, new_me)
@@ -266,14 +276,13 @@ def make_root_prep(ob, flat_root = True, root_length = 8.0, prep_width = .75, ta
     bme.edges.ensure_lookup_table()
     bme.faces.ensure_lookup_table()
     
-    bvh = BVHTree.FromBMesh(bme)  #yep, need this
+    bvh = BVHTree.FromBMesh(bme)  #need this for some proximity stuff
     #####
     ## COLLECT THE UNDRESIDE VERTS ###
     ###
     vg = ob.vertex_groups.get('Under Side')
     bme_inds = set()
     for v in ob.data.vertices:
-    
         try:
             vg.weight(v.index)
             bme_inds.add(v.index)
@@ -281,14 +290,26 @@ def make_root_prep(ob, flat_root = True, root_length = 8.0, prep_width = .75, ta
             pass
     inner_verts = [bme.verts[i] for i in bme_inds]
     
+    print('There are %i inner verts' % len(inner_verts))
+    print('There are %i total verts' % len(bme.verts))
     ###
     ### DELETE THE OTHER GEOMETRY NOT IN UNDERSIDE
     ###
     inner_fs = set()
     for v in inner_verts:
         inner_fs.update(v.link_faces[:])
+        
+    #print('There are %i total fs' % len(bme.faces))
+    #print('There are %i inner fs' % len(inner_fs))    
+    #CONVERT THE SOLID TOOTH TO A SHELL
+    #islands  = bmesh_loose_parts_faces(bme, selected_faces = inner_fs)
+    #print('There are %i islands' % len(islands))
     
-    outer_fs = set(bme.faces[:]) - inner_fs
+    #biggest_island = max(islands, key = len)
+    #print('The biggest island has %i faces' % len(biggest_island))
+    
+    outer_fs = set(bme.faces[:]) - inner_fs #set(biggest_island)
+    
     bmesh_delete(bme, list(outer_fs), "FACES")
     
     bme.verts.ensure_lookup_table()
@@ -301,7 +322,7 @@ def make_root_prep(ob, flat_root = True, root_length = 8.0, prep_width = .75, ta
     ###
     perim_edges = [ed for ed in bme.edges if len(ed.link_faces) == 1]
     loops = edge_loops_from_bmedges_topo(bme, perim_edges)
-    biggest_loop = max(loops, key = lambda x: len(x[0]))
+    biggest_loop = max(loops, key = lambda x: len(x[0]))  #THERE MIGHT BE two loops
     del_set = set(bme.verts[:]) - set(biggest_loop[0])
     bmesh_delete(bme, list(del_set), 'VERTS')
     bme.verts.ensure_lookup_table()
@@ -589,7 +610,9 @@ class AITeeth_OT_root_prep(bpy.types.Operator):
 
     tooth_selection = bpy.props.EnumProperty(name = 'Tooth Selection', items = (('ALL_TEETH','ALL_TEETH','ALL_TEETH'), ('SELECTED_TEETH','SELECTED_TEETH','SELECTED_TEETH')))
     
-    root_type = bpy.props.EnumProperty(name = 'Root Style', items = (('FLAT','FLAT','FLAT'), ('SMOOTH','SMOOTH','SMOOTH')))
+    root_type = bpy.props.EnumProperty(name = 'Root Style', items = (('FLAT','FLAT','FLAT'), ('SMOOTH','SMOOTH','SMOOTH'), ('SHOULDERED','SHOULDERED','SHOULDERED')))
+    root_length = bpy.props.FloatProperty(name = 'Root Length', default = 8.0)
+    
     prep_teeth = bpy.props.BoolProperty(name = 'Add Prep', default = True)
     prep_type = bpy.props.EnumProperty(name = 'Prep Type', default = 'THIMBLE', items = (('THIMBLE','THIMBLE','THIMBLE'), ('ANATOMIC','ANATOMIC','ANATOMIC')))
     shoulder_width = bpy.props.FloatProperty(name = 'Shoulder Width', default = 0.7)
@@ -600,7 +623,8 @@ class AITeeth_OT_root_prep(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
 
-        return True
+        return context.scene.adjust_axes == True
+   
 
     def invoke(self, context, event):
 
@@ -612,6 +636,8 @@ class AITeeth_OT_root_prep(bpy.types.Operator):
     def execute(self, context):
         print('MAIN FUNCTION')
         
+        bpy.context.space_data.transform_manipulators = {'TRANSLATE', 'ROTATE'}
+        bpy.context.space_data.show_manipulator = True
         
         upper_ging = bpy.data.objects.get('Upper Gingiva')
         lower_ging = bpy.data.objects.get('Lower Gingiva')
@@ -632,6 +658,7 @@ class AITeeth_OT_root_prep(bpy.types.Operator):
             print('\n\n\n PREP' + ob.name)
             make_root_prep(ob, flat_root= self.root_type == 'FLAT',
                            prep_width= self.shoulder_width,
+                           root_length= self.root_length,
                            taper = self.taper)
             print('\n\n\n')
             bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
@@ -672,6 +699,7 @@ class AITeeth_OT_root_prep(bpy.types.Operator):
             
             bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
         
+        bpy.context.scene.root_preps = True
         #TODO, set up the modal operator
         return {'FINISHED'}
 

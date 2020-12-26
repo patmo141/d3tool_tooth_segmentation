@@ -372,6 +372,8 @@ class OPENDENTAL_OT_confirm_transforms_for_teeth (bpy.types.Operator):
             mx_axis = axis.matrix_world.copy()
             mx_object = ob.matrix_world.copy()
             
+            axis.parent = None
+            
             #store the chidlren
             children_mx = {}
             for child in ob.children:
@@ -399,7 +401,12 @@ class OPENDENTAL_OT_confirm_transforms_for_teeth (bpy.types.Operator):
             for child in ob.children:
                 child.matrix_world = children_mx[child]
             
+            ob.hide_select = False
+            axis.parent = ob
+            axis.matrix_world = mx_axis
             #axis.matrix_world = mx_axis  #because axis is a child of the tooth
+        
+        context.space_data.transform_manipulators = {'TRANSLATE','ROTATE'}
         return {'FINISHED'}
     
 class OPENDENTAL_OT_empties_to_armature(bpy.types.Operator):
@@ -610,13 +617,13 @@ class OPENDENTAL_OT_setup_root_parenting(bpy.types.Operator):
         context.scene.objects.active = arm_ob
         arm_ob.select = True
         
-        if max_ob:
+        if max_ob != None:
             if len(max_ob.modifiers):
                 apply_mods(max_ob)
             
             link_ob_to_bone(max_ob, arm_ob)
-        if mand_ob:
-            if len(max_ob.modifiers):
+        if mand_ob != None:
+            if len(mand_ob.modifiers):
                 apply_mods(mand_ob)
                 
             link_ob_to_bone(mand_ob, arm_ob)

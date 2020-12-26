@@ -16,6 +16,10 @@ class AITEETH_OT_segment_mandibular_teeth(bpy.types.Operator):
     
     @classmethod
     def poll(cls, context):
+        
+        if not context.scene.lower_teeth_marked: return False
+        if not context.scene.models_processed: return False
+        
         if context.scene.d3ortho_lowerjaw in bpy.data.objects:
             return True
         
@@ -30,7 +34,7 @@ class AITEETH_OT_segment_mandibular_teeth(bpy.types.Operator):
         context.scene.objects.active = ob
         ob.select = True
         ob.hide = False
-        
+        bpy.context.scene.lower_teeth_segmented = True
         bpy.ops.aiteeth.polytrim("INVOKE_DEFAULT")
         
         return {'FINISHED'}
@@ -43,6 +47,9 @@ class AITEETH_OT_segment_maxillary_teeth(bpy.types.Operator):
     
     @classmethod
     def poll(cls, context):
+        if not context.scene.upper_teeth_marked: return False
+        if not context.scene.models_processed: return False
+        
         if context.scene.d3ortho_upperjaw in bpy.data.objects:
             return True
         
@@ -57,7 +64,7 @@ class AITEETH_OT_segment_maxillary_teeth(bpy.types.Operator):
         context.scene.objects.active = ob
         ob.select = True
         ob.hide = False
-        
+        bpy.context.scene.upper_teeth_segmented = True
         bpy.ops.aiteeth.polytrim("INVOKE_DEFAULT")
         
         return {'FINISHED'}

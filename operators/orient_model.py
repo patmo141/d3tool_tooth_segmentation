@@ -31,7 +31,10 @@ class D3ORTHO_OT_orient_model(VIEW3D_OT_points_picker):
     @classmethod
     def can_start(cls, context):
         """ Start only if editing a mesh """
-        return context.object is not None
+        upper_ob = bpy.data.objects.get(bpy.context.scene.d3ortho_upperjaw)
+        lower_ob = bpy.data.objects.get(bpy.context.scene.d3ortho_lowerjaw)
+        
+        return (upper_ob != None) or (lower_ob != None)
 
     
     def start_pre(self):
@@ -40,7 +43,7 @@ class D3ORTHO_OT_orient_model(VIEW3D_OT_points_picker):
         lower_ob = bpy.data.objects.get(bpy.context.scene.d3ortho_lowerjaw)
         
         if upper_ob:
-            self.model = self.context.object
+            self.model = upper_ob
             
         elif lower_ob and upper_ob == None:
             self.model = lower_ob
@@ -55,6 +58,7 @@ class D3ORTHO_OT_orient_model(VIEW3D_OT_points_picker):
             ob.hide = True
             
         self.model.select = True
+        bpy.context.scene.objects.active = self.model
         self.model.hide = False
         
         bpy.ops.view3d.viewnumpad(type = 'FRONT')
@@ -289,6 +293,9 @@ class D3ORTHO_OT_orient_model(VIEW3D_OT_points_picker):
         
         if lower_ob:
             lower_ob.matrix_world = mx_mount * iR
+            
+        if hasattr(bpy.context.scene, "models_oriented"):
+            bpy.context.scene.models_oriented = True
     ####  Enhancing UI ############
     
     def ui_setup_post(self):

@@ -73,6 +73,10 @@ def make_model(gingiva, teeth):
     bme_join.free()
     
    
+    bme_subtract.normal_update()
+    for v in bme_subtract.verts:
+        v.co += .15 * v.normal
+        
     verts1, tris1, quads1 = read_bmesh(bme_subtract)         
     vdb_subtract = convert_vdb(verts1, tris1, quads1, voxel_size)
     bme_subtract.free()
@@ -97,12 +101,10 @@ def make_model(gingiva, teeth):
     return bm
         
 class AITeeth_OT_make_diagnostic_model(bpy.types.Operator):
-    """Create roots and preparations from teeth"""
-    bl_idname = "ai_teeth.root_preps"
+    """Create Diagnostic Model"""
+    bl_idname = "ai_teeth.make_diagnostic_model"
     bl_label = "Make Diagnostic Model(s)"
 
-    
-    
     
     @classmethod
     def poll(cls, context):
@@ -110,15 +112,11 @@ class AITeeth_OT_make_diagnostic_model(bpy.types.Operator):
         return True
 
     def invoke(self, context, event):
-
         
         return context.window_manager.invoke_props_dialog(self, width = 300)
-    
-
-            
+           
     def execute(self, context):
         print('MAIN FUNCTION')
-        
         
         upper_ging = bpy.data.objects.get('Upper Gingiva')
         lower_ging = bpy.data.objects.get('Lower Gingiva')

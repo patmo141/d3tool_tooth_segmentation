@@ -45,8 +45,10 @@ from .op_ai_teeth.ai_teeth import AITeeth_Polytrim
 from . import ortho
 from . import helper_ops
 from . import salience
-from .operators import full_ortho_setup, cloud_export_stl, pick_teeth, segment_teeth, optimize_model, get_convex_teeth, get_reduction_shell, get_two_part_model, get_ortho_setup, edit_axes, keyframe_to_solid, composite_buttons
+from .operators import full_ortho_setup, cloud_export_stl, pick_teeth, segment_teeth, optimize_model, get_convex_teeth, get_reduction_shell, get_two_part_model, get_ortho_setup
 from .operators import view_operators, roots_and_preps, orient_model, mark_extracted, mark_prepped, mark_dies, make_model
+from .operators import composite_buttons, edit_positions, edit_axes, keyframe_to_solid, remove_collisions_from_teeth
+
 
 class AISceneSettings(bpy.types.PropertyGroup):
     accept_ua = BoolProperty(name = 'Accept User Agreement', default = False, description = "Acknowledge that you have read and agree to the user agreement")
@@ -102,6 +104,9 @@ class AITeethPreferences(AddonPreferences):
     bad_segment_hint_color = FloatVectorProperty(name="Bad Segment Hint", description="Bad segment hint color", min=0, max=1, default=(1,0,0), subtype="COLOR")
     
     
+    #Text Labelling
+    text_emboss_depth = FloatProperty(name = 'Text Depth', default = 0.75, min = 0.25, max = 3.0)
+    
     def draw(self, context):
         layout = self.layout
         layout.label(text="AI Teeth Peferences")
@@ -125,7 +130,18 @@ class AITeethPreferences(AddonPreferences):
 
         row = layout.row(align=True)
         row.prop(self, "key_string")
-        
+   
+def icon_fn(context, prop): 
+    
+    if not hasattr(context.scene, prop):
+        return 'NONE'   
+    if getattr(context.scene, prop):
+        return "CHECKBOX_HLT"
+    else:
+        return "CHECKBOX_DEHLT"
+    
+    
+
 class VIEW3D_PT_AITeeth(bpy.types.Panel):
     bl_space_type = "VIEW_3D"
     bl_region_type="TOOLS"
@@ -160,47 +176,59 @@ class VIEW3D_PT_AITeeth(bpy.types.Panel):
         row.operator("ai_teeth.optimize_model", text = "Optimize Mesh")
         row = layout.row()
         
+        row = layout.row()
+        row.label('Segmentation Steps')
         #landmark orient_model
         #manual orient
         row = layout.row()
-        row.operator("d3ortho.orient_model")
+        row.operator("d3ortho.orient_model", icon = icon_fn(context, "models_oriented"))
         
         row = layout.row()
-        row.operator("aiteeth.mark_upper_tooth_locations", text = 'Indicate Upper Teeth')
+        row.operator("aiteeth.mark_upper_tooth_locations", text = 'Indicate Upper Teeth', icon = icon_fn(context, "upper_teeth_marked"))
         row = layout.row()
-        row.operator("aiteeth.mark_lower_tooth_locations", text = 'Indicate Lower Teeth')
+        row.operator("aiteeth.mark_lower_tooth_locations", text = 'Indicate Lower Teeth', icon  = icon_fn(context, "lower_teeth_marked"))
         row = layout.row()
-        row.operator("ai_teeth.preprocess_model", text = "Preprocess Model(s)")
+        row.operator("ai_teeth.preprocess_model", text = "Preprocess Model(s)", icon = icon_fn(context, "models_processed"))
         
         
         if context.scene.d3ortho_upperjaw != '':
             row = layout.row()
-            row.operator( "aiteeth.segment_upper_teeth", text = "Segment Upper Teeth")
+            row.operator( "aiteeth.segment_upper_teeth", text = "Segment Upper Teeth", icon = icon_fn(context, "upper_teeth_segmented"))
         if context.scene.d3ortho_lowerjaw != '':
             row = layout.row()
-            row.operator( "aiteeth.segment_lower_teeth", text = "Segment Lower Teeth")
+            row.operator( "aiteeth.segment_lower_teeth", text = "Segment Lower Teeth", icon = icon_fn(context, "lower_teeth_segmented"))
 
         
         
         row = layout.row()
-        row.label('Setup Case Steps')
+        row.label('Case Setup Steps')
          
         row = layout.row()
-        row.operator("ai_teeth.diagnostic_setup")
+        row.operator("ai_teeth.diagnostic_setup", icon = icon_fn(context, "dx_setup"))
         
         row = layout.row()
-        row.operator("d3ortho.adjust_axes")
+        row.operator("d3ortho.adjust_axes",  icon = icon_fn(context, "adjust_axes"))
         
         row = layout.row()
-        row.operator("ai_teeth.root_preps")
+        row.operator("ai_teeth.root_preps",  icon = icon_fn(context, "root_preps"))
     
         row = layout.row()
-        row.operator("ai_teeth.tooth_vis_popup", text = "Tooh Selection")  
+        row.operator("ai_teeth.tooth_sel_popup", text = "Tooth Selection")  
+        
         row = layout.row()
         row.label('Movement Mockup Pipeline')
         
         row = layout.row()
+        row.prop(context.scene, "frame_end", text = "No of Frames")
+        
+        row = layout.row()
+        row.prop(context.scene, "frame_current", text = "Current Frame")
+        
+        row = layout.row()
         row.operator("d3tool.composite_attachment_tooth")
+        
+        row = layout.row()
+        row.operator("d3ortho.adjust_positions")
         
         row = layout.row()
         row.operator("opendental.set_movement_keyframe")
@@ -219,6 +247,9 @@ class VIEW3D_PT_AITeeth(bpy.types.Panel):
         
         row = layout.row()
         row.operator("ai_teeth.mark_die_teeth")
+        
+        row = layout.row()
+        row.operator("ai_teeth.make_diagnostic_model")
         
         row = layout.row()
         row.label('One Off Functions')
@@ -257,6 +288,7 @@ def register():
     get_ortho_setup.register()
     ortho.register()
     edit_axes.register()
+    edit_positions.register()
     keyframe_to_solid.register()
     composite_buttons.register()
     full_ortho_setup.register()
@@ -266,11 +298,26 @@ def register():
     mark_extracted.register()
     mark_dies.register()
     make_model.register()
+    remove_collisions_from_teeth.register()
     
     bpy.utils.register_class(AISceneSettings)
     bpy.types.Scene.ai_settings = bpy.props.PointerProperty(type = AISceneSettings)
     bpy.types.Scene.d3ortho_upperjaw =  bpy.props.StringProperty(name = "Upper Model", description = "Set the working dental model.")
     bpy.types.Scene.d3ortho_lowerjaw =  bpy.props.StringProperty(name = "Lower Model", description = "Set the working dental model.")
+    bpy.types.Scene.models_oriented =  bpy.props.BoolProperty(name = "Models Oriented", description = "Have Models Been Oriented")
+    bpy.types.Scene.models_processed =  bpy.props.BoolProperty(name = "Models Processed", description = "Have Models Been Processed")
+    bpy.types.Scene.upper_teeth_marked =  bpy.props.BoolProperty(name = "Upper Teeth Markedd", description = "Have Upper Teeth Been Marked")
+    bpy.types.Scene.lower_teeth_marked =  bpy.props.BoolProperty(name = "Lower Teeth Markedd", description = "Have Lower Teeth Been Marked")
+    bpy.types.Scene.upper_teeth_segmented =  bpy.props.BoolProperty(name = "Upper Teeth Segented", description = "Have Upper Teeth Been Marked")
+    bpy.types.Scene.lower_teeth_segmented =  bpy.props.BoolProperty(name = "Lower Teeth Markedd", description = "Have Lower Teeth Been Marked")
+    
+    bpy.types.Scene.dx_setup =  bpy.props.BoolProperty(name = "Dx Setup", description = "Diagnostic Setup")
+    bpy.types.Scene.adjust_axes =  bpy.props.BoolProperty(name = "Adjust Axes", description = "Have Axes been adjsuted and confirmed")
+    bpy.types.Scene.root_preps =  bpy.props.BoolProperty(name = "Dx Setup", description = "Diagnostic Setup")
+    
+    
+    
+    
     
     bpy.types.Scene.tooth_movement =  bpy.props.BoolProperty(name = "Tooth Movement", description = "Will Teeth be Moved?")
     bpy.types.Scene.tooth_reduction =  bpy.props.BoolProperty(name = "Tooth Reduction", description = "Will Teeth be Reduced?")
@@ -294,6 +341,7 @@ def unregister():
     ortho.unregister()
     get_ortho_setup.unregister()
     edit_axes.unregister()
+    edit_positions.unregister()
     keyframe_to_solid.unregister()
     composite_buttons.unregister()
     full_ortho_setup.unregister()
@@ -302,6 +350,7 @@ def unregister():
     mark_extracted.unregister()
     mark_dies.unregister()
     make_model.unregister()
+    remove_collisions_from_teeth.unregister()
     
     bpy.utils.unregister_class(AISceneSettings)
     del bpy.types.Scene.ai_settings

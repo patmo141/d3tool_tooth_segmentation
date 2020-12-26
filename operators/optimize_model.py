@@ -4,6 +4,10 @@ from bpy.props import IntProperty, FloatProperty, BoolProperty
 
 
 
+
+
+        
+        
 class AITeeth_OT_optimize_model(bpy.types.Operator):
     """Get rid of lon edges and decimate Mesh to Target Vertex Count"""
     bl_idname = "ai_teeth.optimize_model"
@@ -18,15 +22,36 @@ class AITeeth_OT_optimize_model(bpy.types.Operator):
     
     @classmethod
     def poll(cls, context):
-        if context.mode == "OBJECT" and context.object != None:
-            return True
-        else:
-            return False
+        ob1 = bpy.data.objects.get(context.scene.d3ortho_upperjaw)
+        ob2 = bpy.data.objects.get(context.scene.d3ortho_lowerjaw)
         
+        if ob1 != None or ob2 != None:
+            return True
+        
+        return False
+    
     def execute(self, context):
         
-        ob = context.object
+        ob1 = bpy.data.objects.get(context.scene.d3ortho_upperjaw)
+        ob2 = bpy.data.objects.get(context.scene.d3ortho_lowerjaw)
         
+        for ob in bpy.data.objects:
+            ob.select = False
+            
+        for ob in [ob1, ob2]:
+            if ob == None: continue
+            ob.select = True
+            context.scene.objects.active = ob
+            self.optimize_model(context, ob)
+            ob.select = False
+        
+        context.scene.objects.active = None
+            
+        return {'FINISHED'}
+    
+    def optimize_model(self, context, ob):
+    
+    
         bme = bmesh.new()
         bme.from_object(ob, context.scene)
         
@@ -40,9 +65,9 @@ class AITeeth_OT_optimize_model(bpy.types.Operator):
             bpy.ops.object.mode_set(mode = 'OBJECT')
             
         
-        is_dyntopo = context.object.use_dynamic_topology_sculpting
+        is_dyntopo = ob.use_dynamic_topology_sculpting
             
-
+    
         bme.verts.ensure_lookup_table()
         mask = bme.verts.layers.paint_mask.verify()
     
@@ -61,7 +86,7 @@ class AITeeth_OT_optimize_model(bpy.types.Operator):
                 v[mask] = 0.0
             else:
                 v[mask] = 1.0
-
+    
         bme.to_mesh(context.object.data) #push the mask back
         context.object.data.update()
         
@@ -69,7 +94,12 @@ class AITeeth_OT_optimize_model(bpy.types.Operator):
             bme.free()
             bpy.ops.object.mode_set(mode = 'SCULPT')
         
-            if not is_dyntopo:
+            if ob.use_dynamic_topology_sculpting != True:
+                print('\n')
+                print(ob.name)
+                print(ob.use_dynamic_topology_sculpting)
+                print(context.object.use_dynamic_topology_sculpting)
+                print('Toggling dyntopo')
                 bpy.ops.sculpt.dynamic_topology_toggle()
             context.scene.tool_settings.sculpt.detail_type_method = 'CONSTANT'
             context.scene.tool_settings.sculpt.constant_detail_resolution =  min(1/(1.5*self.target_edge_length), 6)
@@ -96,10 +126,6 @@ class AITeeth_OT_optimize_model(bpy.types.Operator):
             ob.modifiers.clear()
             ob.data = me
             bpy.data.meshes.remove(old_me)
-            
-        return {'FINISHED'}
-    
-    
 def register():
     bpy.utils.register_class(AITeeth_OT_optimize_model)
     

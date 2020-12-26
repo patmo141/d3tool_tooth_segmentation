@@ -1,10 +1,5 @@
 '''
-Created on Dec 26, 2019
-
-@author: Patrick
-'''
-'''
-Created on Nov 27, 2019
+Created on Nov 27, 2020
 
 @author: Patrick
 '''
@@ -37,8 +32,9 @@ from d3lib.bmesh_utils.bmesh_utilities_common import bmesh_join_list, increase_v
 from d3guard.subtrees.metaballs.vdb_tools import remesh_bme
 from d3lib.geometry_utils.transformations import r_matrix_from_principal_axes, random_axes_from_normal
 
-from ..tooth_numbering import data_tooth_label
+from ..tooth_numbering import data_tooth_label, mes_dis_relation
 from .. import tooth_numbering
+from .remove_collisions_from_teeth import main as collisions_main
 
 meta_radius = .5
 meta_resolution = .2
@@ -223,12 +219,15 @@ def convexify_object(context, ob):
     bme_remesh.free()
     bme.free()
     
+    new_ob['original_ob_name'] = ob.name  #store the original ob name as ID prop
+    
     return new_ob
 
 def main_function(context,
                   use_select = False,
                   base = True,
-                  trim = True):
+                  trim = True,
+                  decollide = True):
     
     if use_select:
         selected_teeth = [ob for ob in bpy.context.scene.objects if ob.type == 'MESH' and 'tooth' in ob.data.name and ob.select == True]
@@ -249,7 +248,7 @@ def main_function(context,
         
     if upper_ob and len(upper_teeth):
         print('DOING UPPER TEETH')
-        subtract_model, upper_gingiva  = ortho_setup(upper_ob, upper_teeth, add_base = base, auto_trim = trim)
+        subtract_model, upper_gingiva  = ortho_setup(upper_ob, upper_teeth, add_base = base, auto_trim = trim, remove_collisions= decollide)
         
         upper_gingiva.modifiers.clear()
         mod = upper_gingiva.modifiers.new('Boolean', type = 'BOOLEAN')
@@ -269,7 +268,7 @@ def main_function(context,
         
     if lower_ob and len(lower_teeth):
         print('DOING LOWER TEETH')
-        subtract_model, lower_gingiva = ortho_setup(lower_ob, lower_teeth, add_base= base, auto_trim = trim)
+        subtract_model, lower_gingiva = ortho_setup(lower_ob, lower_teeth, add_base= base, auto_trim = trim, remove_collisions= decollide)
         
         lower_gingiva.modifiers.clear()                                    
         mod = lower_gingiva.modifiers.new('Boolean', type = 'BOOLEAN')
@@ -284,14 +283,20 @@ def main_function(context,
         
         bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
     
+    
+    if upper_ob and len(upper_teeth):
+        upper_gingiva.hide = False
+
+    if lower_ob and len(lower_teeth):    
         lower_gingiva.hide = False
     
     for ob in bpy.data.objects:
         if 'Convex' in ob.name:
-            ob.hide = False    
+            ob.hide = False  
+            ob.hide_select = True  
     #context.space_data.show_textured_solid = False 
         
-def ortho_setup(base_ob, teeth, add_base = True, auto_trim = True):
+def ortho_setup(base_ob, teeth, add_base = True, auto_trim = True, remove_collisions = True):
     
     
     convex_teeth = []
@@ -303,7 +308,7 @@ def ortho_setup(base_ob, teeth, add_base = True, auto_trim = True):
     
         ob.hide = True
         bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
-        
+    
     #BVH for filtration based on original geometry
     bme_base = bmesh.new()
     mx_base = base_ob.matrix_world
@@ -356,6 +361,9 @@ def ortho_setup(base_ob, teeth, add_base = True, auto_trim = True):
         
         
         ob.update_tag()  #MAYBE FIX
+   
+    #bpy.ops.ai_teeth.remove_convex_collisions(iterations=2, factor = .25)  #do it as operator?
+    collisions_main(convex_teeth, 2, .35)   #remove collisions between the convex teeth
     
     bpy.context.scene.update()
       
@@ -386,6 +394,9 @@ def ortho_setup(base_ob, teeth, add_base = True, auto_trim = True):
     new_ob2 = bpy.data.objects.new("Teeth Subtract", new_me2)
     bpy.context.scene.objects.link(new_ob2)
     solid_remesh.to_mesh(new_me2)
+    
+    
+    bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
     
     if auto_trim:
         bvh_trim = BVHTree.FromBMesh(solid_remesh)
@@ -427,6 +438,15 @@ def ortho_setup(base_ob, teeth, add_base = True, auto_trim = True):
         if len(neighbors) > 2:  #remember it's going to find itself as the closest element in the KDTree so we wane the 1 and 2, not the 0 and 1
             co1, n1, _ = neighbors[1]
             co2, n2, _ = neighbors[2]
+            
+            
+            ob0_name = convex_teeth[i]["original_ob_name"]
+            ob1_name = convex_teeth[n1]["original_ob_name"]
+            ob2_name = convex_teeth[n2]["original_ob_name"]
+            
+            md1 = mes_dis_relation(ob0_name, ob1_name)
+            md2 = mes_dis_relation(ob0_name, ob1_name)
+            
             
             #diagnostic visualization help for debugging
             #create_empty(convex_teeth[i].name + 'co1', co1)
@@ -489,9 +509,28 @@ def ortho_setup(base_ob, teeth, add_base = True, auto_trim = True):
             print('Took %f seconds to calc average area' % (time.time() - interval))
             interval = time.time()
             
-            Tmx = Matrix.Translation(centers[i]) #get the cetnral point
+            co_c = centers[i]
+            Tmx = Matrix.Translation(co_c) #get the cetnral point
             Z = average_normal
-            X = (co2 - co1).normalized()
+            
+            
+            #Check if terminal tooth
+            if (co2 - co_c).dot(co1 - co_c) > 0:
+                X = co1 - co_c  #only point toward the closest
+                X.normalize()
+                
+                if int(data_tooth_label(ob0_name)) > int(data_tooth_label(ob2_name)):
+                    X *= -1
+                    
+            else:
+                #now check direction around arch
+                if int(data_tooth_label(ob1_name)) > int(data_tooth_label(ob2_name)):
+                    X = (co1 - co2).normalized()
+                else:
+                    X = (co2 - co1).normalized() 
+            
+            
+            
             Y = Z.cross(X)
             X = Y.cross(Z) #put mes/dis perp to root
             
@@ -583,11 +622,13 @@ class AITeeth_OT_ortho_setup(bpy.types.Operator):
     
     add_base = bpy.props.BoolProperty(name = 'Add Base', default = True)
     auto_trim = bpy.props.BoolProperty(name = 'Auto Trim', default = True)
+    decollide = bpy.props.BoolProperty(name = 'Remove Collisions', default = True)
     
     @classmethod
     def poll(cls, context):
 
-        return True
+        return context.scene.lower_teeth_segmented or context.scene.upper_teeth_segmented
+        
 
     def invoke(self, context, event):
 
@@ -598,11 +639,15 @@ class AITeeth_OT_ortho_setup(bpy.types.Operator):
             
     def execute(self, context):
         print('MAIN FUNCTION')
+        
+        bpy.ops.view3d.viewnumpad(type = 'FRONT')
         main_function(context,
                       use_select = self.tooth_selection == 'SELECTED_TEETH',
                       base = self.add_base,
-                      trim = self.auto_trim)
+                      trim = self.auto_trim,
+                      decollide = self.decollide)
 
+        bpy.context.scene.dx_setup = True
         #TODO, set up the modal operator
         return {'FINISHED'}
 
