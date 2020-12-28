@@ -274,7 +274,9 @@ def make_reduction_shells(context, depth):
                     child.data.transform(imx) #put back
                     margin_ob = child
                     
-            ob = bpy.data.objects.get(c_ob.name.split(' ')[0])
+               
+                    
+            ob = bpy.data.objects.get(c_ob.name.split(' ')[0] + " open_shell")
             if ob:
                 original_teeth.append(ob)
 
@@ -293,9 +295,9 @@ def make_reduction_shells(context, depth):
                     pmod.vertex_group = "Margin Prox"
                     pmod.proximity_mode = 'GEOMETRY'
                     pmod.proximity_geometry = {'VERTEX'}
-                    pmod.min_dist = 0.0 #4.5
-                    pmod.max_dist = 2.5
-                    pmod.falloff_type = 'LINEAR' #'SMOOTH' #'SHARP' #'ICON_SPHERECURVE'
+                    pmod.min_dist = 0.5 #4.5
+                    pmod.max_dist = 2.0
+                    pmod.falloff_type = 'ICON_SPHERECURVE' #LINEAR' #'SMOOTH' #'SHARP' #'ICON_SPHERECURVE'
                     pmod.show_expanded = False
                 
                 
@@ -384,7 +386,7 @@ def make_reduction_shells(context, depth):
             bmes += [bme]
             ob.modifiers.clear()
             
-        bme_offset = bmesh_join_list(bmes + [bme_contacts])
+        bme_offset = bmesh_join_list(bmes) # + [bme_contacts])
         
         final_bme = remesh_bme(bme_offset, 
                     isovalue = 0.1, 

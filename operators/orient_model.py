@@ -5,6 +5,7 @@ Created on Aug 9, 2019
 '''
 import math
 import random
+import uuid
 
 import bpy
 from mathutils import Vector, Matrix
@@ -296,6 +297,8 @@ class D3ORTHO_OT_orient_model(VIEW3D_OT_points_picker):
             
         if hasattr(bpy.context.scene, "models_oriented"):
             bpy.context.scene.models_oriented = True
+            bpy.context.scene.d3ortho_case_id = str(uuid.uuid4())[0:8]
+            
     ####  Enhancing UI ############
     
     def ui_setup_post(self):

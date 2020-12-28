@@ -46,8 +46,9 @@ from . import ortho
 from . import helper_ops
 from . import salience
 from .operators import full_ortho_setup, cloud_export_stl, pick_teeth, segment_teeth, optimize_model, get_convex_teeth, get_reduction_shell, get_two_part_model, get_ortho_setup
-from .operators import view_operators, roots_and_preps, orient_model, mark_extracted, mark_prepped, mark_dies, make_model
+from .operators import view_operators, roots_and_preps, orient_model, mark_extracted, mark_prepped, mark_dies, mark_pontics
 from .operators import composite_buttons, edit_positions, edit_axes, keyframe_to_solid, remove_collisions_from_teeth
+from .operators import make_model, make_temps
 
 
 class AISceneSettings(bpy.types.PropertyGroup):
@@ -292,18 +293,24 @@ def register():
     keyframe_to_solid.register()
     composite_buttons.register()
     full_ortho_setup.register()
+    remove_collisions_from_teeth.register()
     roots_and_preps.register()
     orient_model.register()
     mark_prepped.register()
     mark_extracted.register()
     mark_dies.register()
+    mark_pontics.register()
+    
     make_model.register()
-    remove_collisions_from_teeth.register()
+    make_temps.register()
+    
     
     bpy.utils.register_class(AISceneSettings)
     bpy.types.Scene.ai_settings = bpy.props.PointerProperty(type = AISceneSettings)
     bpy.types.Scene.d3ortho_upperjaw =  bpy.props.StringProperty(name = "Upper Model", description = "Set the working dental model.")
     bpy.types.Scene.d3ortho_lowerjaw =  bpy.props.StringProperty(name = "Lower Model", description = "Set the working dental model.")
+    bpy.types.Scene.d3ortho_case_id =  bpy.props.StringProperty(name = "Case ID", description = "Unique case iD")
+    
     bpy.types.Scene.models_oriented =  bpy.props.BoolProperty(name = "Models Oriented", description = "Have Models Been Oriented")
     bpy.types.Scene.models_processed =  bpy.props.BoolProperty(name = "Models Processed", description = "Have Models Been Processed")
     bpy.types.Scene.upper_teeth_marked =  bpy.props.BoolProperty(name = "Upper Teeth Markedd", description = "Have Upper Teeth Been Marked")
@@ -349,7 +356,11 @@ def unregister():
     mark_prepped.unregister()
     mark_extracted.unregister()
     mark_dies.unregister()
+    mark_pontics.unregister()
+    
     make_model.unregister()
+    make_temps.unregister()
+    
     remove_collisions_from_teeth.unregister()
     
     bpy.utils.unregister_class(AISceneSettings)

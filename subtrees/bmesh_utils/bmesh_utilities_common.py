@@ -144,7 +144,7 @@ def grow_selection(bme:BMesh, start_faces:set, max_iters:int=1000):
     total_selection = set(start_faces)
     new_faces = set()
     for f in start_faces:
-        new_faces.update(face_neighbors_by_vert(f))
+        new_faces.update(face_neighbors(f, 'verts'))
 
     print('there were %i start_faces' % len(start_faces))
     print('there are %i new_faces' % len(new_faces))
@@ -592,7 +592,7 @@ def partition_faces_between_edge_boundaries(bme:BMesh, input_faces:set, boundary
 
     return islands
 
-def edge_loops_from_bmedges_topo(bme, bm_edges, max_loops = 10):
+def edge_loops_from_bmedges_topo(bme, bm_edges, max_loops = 10, max_loop_size = 10000):
     '''
     this function is unsafe and does not handle erros
     this function assumes the non manifold edges form closed non intersecting loops
@@ -610,13 +610,23 @@ def edge_loops_from_bmedges_topo(bme, bm_edges, max_loops = 10):
     def next_edge(v, prev_ed):
         return [ed for ed in v.link_edges if ed in ed_set and ed != prev_ed][0]
     
+    
+    nodes = [v for v in verts if len([ed in ed_set for ed in v.link_edges if ed in ed_set]) > 2]
+    
+    print('We have %i nodes' % len(nodes))
        
+    
     loops = []
     
     iters = 0
     while len(verts) and iters < max_loops:
         iters += 1
-        v = verts.pop()
+        
+        if len(nodes):
+            v = nodes.pop()
+            verts.remove(v)
+        else:
+            v = verts.pop()
         
         branch_eds = [ed for ed in v.link_edges if ed in ed_set]
         if not len(branch_eds): continue
@@ -634,7 +644,10 @@ def edge_loops_from_bmedges_topo(bme, bm_edges, max_loops = 10):
         next_v = ed.other_vert(v)
         next_ed = next_edge(next_v, ed)
         
-        while next_v != v:  #remember v is the start vertex
+        iters_walk = 0
+        while next_v != v and iters_walk < max_loop_size:
+            iters_walk += 1
+            #remember v is the start vertex
             branch_verts += [next_v]
             branch_edges += [next_ed]
             if next_v in verts:

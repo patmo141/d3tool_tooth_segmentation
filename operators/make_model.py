@@ -138,16 +138,16 @@ class AITeeth_OT_make_diagnostic_model(bpy.types.Operator):
             bm_upper.free()
             
         if lower_ging:
-            bm_upper = make_model(upper_ging, upper_teeth)
+            bm_lower = make_model(lower_ging, lower_teeth)
             if "Lower Output" not in bpy.data.objects:
                 me = bpy.data.meshes.new('Lower Output')
-                upper_ob = bpy.data.objects.new('Lower Output', me)
-                context.scene.objects.link(ob)
+                lower_ob = bpy.data.objects.new('Lower Output', me)
+                context.scene.objects.link(lower_ob)
             else:
                 upper_ob = bpy.data.objects.get('Lower Output')
                 
-            bm_upper.to_mesh(upper_ob.data)
-            bm_upper.free()
+            bm_lower.to_mesh(lower_ob.data)
+            bm_lower.free()
         
         #TODO, set up the modal operator
         return {'FINISHED'}

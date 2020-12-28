@@ -47,10 +47,10 @@ def get_teeth(context):
     return all_teeth, selected_teeth, upper_teeth, lower_teeth
       
             
-class AITeeth_OT_tooth_dies_popup(bpy.types.Operator):
+class AITeeth_OT_tooth_pontic_popup(bpy.types.Operator):
     """Mark Teeth for Extraction"""
-    bl_idname = "ai_teeth.mark_die_teeth"
-    bl_label = "Mark Removable Dies"
+    bl_idname = "ai_teeth.mark_pontic_teeth"
+    bl_label = "Mark Pontic Teeth"
     #bl_options = {'REGISTER', 'UNDO'}
     
     
@@ -64,25 +64,16 @@ class AITeeth_OT_tooth_dies_popup(bpy.types.Operator):
         
         
         for ob in self.upper_teeth + self.lower_teeth:
-            if ob.get('EXTRACT') == 1:
-                ob.hide = True
-                for child in ob.children:
-                    child.hide = True
-                
-                print('EXTRACTED Teeth')    
-                continue
-                
-            if (ob.get('REMOVABLE_DIE') == 1) != ob.select:
-                ob['REMOVABLE_DIE'] = ob.select
+            if (ob.get('PONTIC') == True) != ob.select:
+                ob['PONTIC'] = ob.select
             
-            ob.hide = ob.select
+            ob.hide = ob.select == False
+            
             for child in ob.children:
                 if child.type == 'EMPTY':
                     child.hide = True
-                elif "root_prep" in child.name:
-                    child.hide = ob.get('REMOVABLE_DIE') == 0
                 else:
-                    child.hide = ob.select
+                    child.hide = ob.select == False
                     
         return True
     
@@ -124,24 +115,17 @@ class AITeeth_OT_tooth_dies_popup(bpy.types.Operator):
         self.lower_teeth = get_convex(lower)
         
         for ob in self.upper_teeth + self.lower_teeth:
-            if ob.get('REMOVABLE_DIE') == None:
+            if ob.get('PONTIC') == None:
                 #create the custom ID prop
-                ob['REMOVABLE_DIE'] = False
+                ob['PONTIC'] = False
+                ob.hide = True
                 
             else:
-                print('ALREADY HAS IT')
-                ob.hide = ob.get('REMOVABLE_DIE') == 1
-                ob.select = ob.get('REMOVABLE_DIE') == 1
+                print('ALREADY PONTIC')
+                ob.hide = ob.get('PONTIC') != 1
+                ob.select = ob.get('PONTIC') == True
                 
-            if ob.get('REMOVABLE_DIE') != None:
-                ob.hide = ob.get('REMOVABLE_DIE') == True
-                
-                if ob.get('REMOVABLE_DIE') == 1:
-                    for child in ob.children:
-                        if 'root_prep' in child.name:
-                            child.draw_type = 'WIRE'
-                            child.show_x_ray = True
-                
+
         
         
         self.upper_teeth.sort(key = lambda x: upper_view_order.index(data_tooth_label(x.name.split(' ')[0])))
@@ -168,6 +152,7 @@ class AITeeth_OT_tooth_dies_popup(bpy.types.Operator):
         if bpy.data.objects.get('Upper Gingiva'):
             ug = bpy.data.objects.get('Upper Gingiva')
             ug.hide = False
+            
         
         return context.window_manager.invoke_props_dialog(self, width = 700)
         
@@ -182,14 +167,12 @@ class AITeeth_OT_tooth_dies_popup(bpy.types.Operator):
         for ob in self.upper_teeth + self.lower_teeth:
             ob.select = False
             
-            if ob.get('REMOVABLE_DIE') == 1:
-                ob.hide = True
+            if ob.get('PONTIC') == 1:
+                ob.draw_type = 'SOLID'
                 for child in ob.children:
-                    if "root_prep" not in child.name:
-                        child.hide = True
-                    else:
-                        child.hide = False
-
+                    child.hide = True
+            else:
+                ob.draw_type = 'SOLID'
             
         return {'FINISHED'}
     
@@ -198,7 +181,7 @@ class AITeeth_OT_tooth_dies_popup(bpy.types.Operator):
         
         
         row = self.layout.row()
-        row.label('Make Removable Dies')
+        row.label('Pontic Teeth')
         
         row = self.layout.row()
         split = row.split(percentage = .5)
@@ -225,8 +208,8 @@ class AITeeth_OT_tooth_dies_popup(bpy.types.Operator):
             
 
 def register():
-    bpy.utils.register_class(AITeeth_OT_tooth_dies_popup)
+    bpy.utils.register_class(AITeeth_OT_tooth_pontic_popup)
     
 
 def unregister():
-    bpy.utils.unregister_class(AITeeth_OT_tooth_dies_popup)
+    bpy.utils.unregister_class(AITeeth_OT_tooth_pontic_popup)
