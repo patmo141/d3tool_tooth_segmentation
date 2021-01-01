@@ -131,9 +131,7 @@ class D3TOOL_AI_export_segmentation_case(Operator, ExportHelper, IOSTLOrientatio
         
         #gather all important assets
         
-        data_seq = []
-        paths_to_zip = []
-
+        data_seq = [ob for ob in context.scene.objects if ob.select]
 
         for ob in bpy.data.object:
             if ob.get('d3output') == 1:
@@ -151,9 +149,6 @@ class D3TOOL_AI_export_segmentation_case(Operator, ExportHelper, IOSTLOrientatio
         
         zf = zipfile.ZipFile(output_path, 'w')
         
-        
-        
-        
         # Take into account scene's unit scale, so that 1 inch in Blender gives 1 inch elsewhere! See T42000.
         global_scale = self.global_scale
         if scene.unit_settings.system != 'NONE' and self.use_scene_unit:
@@ -169,7 +164,6 @@ class D3TOOL_AI_export_segmentation_case(Operator, ExportHelper, IOSTLOrientatio
             faces = blender_utils.faces_from_mesh(ob, global_matrix, self.use_mesh_modifiers)
             
             ob_file_path = os.path.join(manual_temp_directory, bpy.path.clean_name(ob.name) + ".stl")
-            paths_to_zip.append(ob_file_path)
             stl_utils.write_stl(file_path = ob_file_path, faces=faces)
             zf.write(ob_file_path)
             

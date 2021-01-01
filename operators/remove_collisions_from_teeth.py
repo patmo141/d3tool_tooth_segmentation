@@ -94,17 +94,34 @@ def decollide_pair(ob0, ob1, bvhs, factor):
     vec0_local = mxno0 * vec_01
     vec1_local = mxno1 * vec_10
     
+    ob1_contacts = set()
+    if 'prox contact ' + ob1.name not in ob0.vertex_groups:
+        vg = ob0.vertex_groups.new(name = 'prox contact ' + ob1.name)
+    else:
+        vg = ob0.vertex_groups.get('prox contact ' + ob1.name)
+        
     for v in ob0.data.vertices:
         loc, no, ind, d = bvh1.ray_cast(imx1 * mx0 * v.co, vec1_local)
         if loc:
+            ob1_contacts.add(v.index)
             v.co = ((1- factor) * v.co + factor * imx0 * mx1 * loc)
-            print('Decollide')
-            
+     
+    vg.add(list(ob1_contacts), weight = 1.0, type = 'REPLACE')      
+     
+     
+    ob0_contacts = set()
+    if 'prox contact ' + ob0.name not in ob1.vertex_groups:
+        vg = ob1.vertex_groups.new(name = 'prox contact ' + ob0.name)
+    else:
+        vg = ob1.vertex_groups.get('prox contact ' + ob0.name)  
+             
     for v in ob1.data.vertices:
         loc, no, ind, d = bvh0.ray_cast(imx0 * mx1* v.co, vec0_local)
         if loc:
-            v.co = ((1-factor)* v.co + factor * imx1 * mx0* loc)    
-            print('Decollide')
+            v.co = ((1-factor)* v.co + factor * imx1 * mx0* loc)   
+            ob0_contacts.add(v.index) 
+    vg.add(list(ob0_contacts), weight = 1.0, type = 'REPLACE')
+            
 #find out who collides if anyone by creating BVH from
 #transformed BMEsh
 

@@ -59,7 +59,24 @@ def create_bme_ob(name, bme):
     bme.to_mesh(me)
     bpy.context.scene.objects.link(ob)
     
+ 
+def get_inds_vg(ob, vg_name):
     
+    vg = ob.vertex_groups.get(vg_name)
+    if vg == None:
+        return []
+    
+    bme_inds = set()
+    for v in ob.data.vertices:
+        try:
+            vg.weight(v.index)
+            bme_inds.add(v.index)
+        except:
+            pass
+    return bme_inds
+    
+    
+      
 def convexify_object(context, ob):
     '''
     uses the convex hull to fill in the bottom
@@ -422,6 +439,10 @@ def ortho_setup(base_ob, teeth, add_base = True, auto_trim = True, remove_collis
     #now filter the tooth solid geometry for proximity
     for i, bme in enumerate(bmes_convex):
         
+        bme.verts.ensure_lookup_table()
+        bme.edges.ensure_lookup_table()
+        bme.faces.ensure_lookup_table()
+        
         out_patch = set()
         out_patch_accurate = set()
         
@@ -443,10 +464,6 @@ def ortho_setup(base_ob, teeth, add_base = True, auto_trim = True, remove_collis
             ob0_name = convex_teeth[i]["original_ob_name"]
             ob1_name = convex_teeth[n1]["original_ob_name"]
             ob2_name = convex_teeth[n2]["original_ob_name"]
-            
-            md1 = mes_dis_relation(ob0_name, ob1_name)
-            md2 = mes_dis_relation(ob0_name, ob1_name)
-            
             
             #diagnostic visualization help for debugging
             #create_empty(convex_teeth[i].name + 'co1', co1)
@@ -529,28 +546,69 @@ def ortho_setup(base_ob, teeth, add_base = True, auto_trim = True, remove_collis
                 else:
                     X = (co2 - co1).normalized() 
             
-            
+            #Check the surface of the proximal contacts
+            if remove_collisions:
+                prox_vgs = [vg for vg in convex_teeth[i].vertex_groups if 'prox contact' in vg.name]
+                if len(prox_vgs) == 2:
+                    prox_vecs = []
+                    for vg in prox_vgs:
+                        
+                        vg_inds = get_inds_vg(convex_teeth[i], vg.name)
+                        fs = set()
+                        for vin in vg_inds:
+                            fs.update(bme.verts[vin].link_faces[:])
+                    
+                        total_area = 0
+                        average_normal = Vector((0,0,0))
+                        for f in fs:
+                            a = f.calc_area()
+                            total_area += a
+                            average_normal += a * f.normal
+                            
+                        if abs(total_area) < .001:
+                            average_normal = Vector((0,0,0))
+                        else:
+                            average_normal *= 1/total_area
+                            average_normal.normalize()
+                            
+                        prox_vecs += [average_normal]
+                        
+                    prox_vecs[1] = -1 * prox_vecs[1]
+                    
+                    Xp = .5 * (prox_vecs[0] + prox_vecs[1])
+                    Xp.normalize()
+                    
+                    if Xp.dot(X) < 0:
+                        X = -1 * Xp
+                    else:
+                        X = Xp
+                    
+                    #correct Z to be parallel planar to average conact surface
+                    Z = Z - Z.dot(X) * X
+                    Z.normalize()
             
             Y = Z.cross(X)
             X = Y.cross(Z) #put mes/dis perp to root
             
             X.normalize()
             Y.normalize()
-            print('AVERAGE  NORMAL MATRIX STUFF')
-            print(X.length)
-            print(Y.length)
-            print(Z.length)
+
             
             #X,Y,Z = random_axes_from_normal(Z)
             Rmx = r_matrix_from_principal_axes(X,Y,Z).to_4x4()
         
             
             root_name = convex_teeth[i].name.split(' ')[0] + ' root_empty'
-            root_empty = bpy.data.objects.new(root_name, None)
-            root_empty.empty_draw_type = 'SINGLE_ARROW'
-            root_empty.empty_draw_size = 12
-            bpy.context.scene.objects.link(root_empty)
-            root_empty.parent = convex_teeth[i]
+            
+            if root_name in bpy.data.objects:
+                root_empty = bpy.data.objects.get(root_name)
+            else:
+                
+                root_empty = bpy.data.objects.new(root_name, None)
+                root_empty.empty_draw_type = 'SINGLE_ARROW'
+                root_empty.empty_draw_size = 12
+                bpy.context.scene.objects.link(root_empty)
+                root_empty.parent = convex_teeth[i]
             #R_parent = convex_teeth[i].matrix_world.to_quaternion().to_matrix().to_4x4()
             root_empty.matrix_world = Tmx * Rmx
             
