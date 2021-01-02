@@ -27,14 +27,16 @@ from .get_reduction_shell import make_reduction_shells
 
  
 
-def add_to_bmesh(bme, ob):
+def add_to_bmesh(bme, ob, transform = True):
     
     mx = ob.matrix_world
     imx = mx.inverted()
     
-    ob.data.transform(mx)
+    if transform:
+        ob.data.transform(mx)
     bme.from_mesh(ob.data)
-    ob.data.transform(imx)
+    if transform:
+        ob.data.transform(imx)
    
 def make_model(gingiva, teeth):    
     
@@ -56,6 +58,30 @@ def make_model(gingiva, teeth):
             if root:
                 add_to_bmesh(bme_subtract, root)
             add_to_bmesh(bme_subtract, ob)
+            
+            
+            if not ob.get('PREPARED'):
+                #join the tooth to the root_prep
+                bme_die = bmesh.new()
+                add_to_bmesh(bme_die, root, transform = False)
+                add_to_bmesh(bme_die, ob, transform = False)
+                bmesh.ops.triangulate(bme_die, faces = bme_die.faces[:])
+                bme_die2 = remesh_bme(bme_die, 
+                          isovalue = 0.01, 
+                          adaptivity = 0.5, 
+                          only_quads = False, 
+                          voxel_size = .09,
+                          filter_iterations = 0,
+                          filter_width = 4,
+                          filter_sigma = 1.0,
+                          grid = None,
+                          write_method = 'FAST')
+                
+                bme_die2.to_mesh(root.data)
+                bme_die.free()
+                bme_die2.free()
+                
+            root["d3output"] = True
         
             continue
         
@@ -136,6 +162,7 @@ class AITeeth_OT_make_diagnostic_model(bpy.types.Operator):
                 
             bm_upper.to_mesh(upper_ob.data)
             bm_upper.free()
+            upper_ob["d3output"] = True
             
         if lower_ging:
             bm_lower = make_model(lower_ging, lower_teeth)
@@ -148,6 +175,7 @@ class AITeeth_OT_make_diagnostic_model(bpy.types.Operator):
                 
             bm_lower.to_mesh(lower_ob.data)
             bm_lower.free()
+            lower_ob["d3output"] = True
         
         #TODO, set up the modal operator
         return {'FINISHED'}

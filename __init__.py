@@ -45,10 +45,11 @@ from .op_ai_teeth.ai_teeth import AITeeth_Polytrim
 from . import ortho
 from . import helper_ops
 from . import salience
+from . import import_export
 from .operators import full_ortho_setup, cloud_export_stl, pick_teeth, segment_teeth, optimize_model, get_convex_teeth, get_reduction_shell, get_two_part_model, get_ortho_setup
 from .operators import view_operators, roots_and_preps, orient_model, mark_extracted, mark_prepped, mark_dies, mark_pontics
 from .operators import composite_buttons, edit_positions, edit_axes, keyframe_to_solid, remove_collisions_from_teeth
-from .operators import make_model, make_temps
+from .operators import make_model, make_temps, make_temps_individual
 
 
 class AISceneSettings(bpy.types.PropertyGroup):
@@ -249,8 +250,21 @@ class VIEW3D_PT_AITeeth(bpy.types.Panel):
         row = layout.row()
         row.operator("ai_teeth.mark_die_teeth")
         
+        
+        row = layout.row()
+        row.label('Create Outputs')
+        
         row = layout.row()
         row.operator("ai_teeth.make_diagnostic_model")
+        
+        row = layout.row()
+        row.operator("ai_teeth.make_individual_temp_shells")
+        
+        row = layout.row()
+        row.operator("ai_teeth.make_temp_bridge_shells")
+        
+        
+        
         
         row = layout.row()
         row.label('One Off Functions')
@@ -270,7 +284,10 @@ class VIEW3D_PT_AITeeth(bpy.types.Panel):
             row = layout.row()
             row.operator("d3splint.save_cloud_blend")
         row = layout.row()
-        row.operator("d3ortho.export_stl", text = "Save Selected")
+        row.operator("d3ortho.export_stl", text = "Export Selected")
+        
+        row = layout.row()
+        row.operator("aiteeth.export_segmentation_case", text = "Export all Outputs")
         
 def register(): 
     bpy.utils.register_class(AITeethPreferences)
@@ -303,6 +320,9 @@ def register():
     
     make_model.register()
     make_temps.register()
+    make_temps_individual.register()
+    
+    import_export.register()
     
     
     bpy.utils.register_class(AISceneSettings)
@@ -347,6 +367,7 @@ def unregister():
     roots_and_preps.unregister()
     ortho.unregister()
     get_ortho_setup.unregister()
+    remove_collisions_from_teeth.unregister()
     edit_axes.unregister()
     edit_positions.unregister()
     keyframe_to_solid.unregister()
@@ -360,8 +381,10 @@ def unregister():
     
     make_model.unregister()
     make_temps.unregister()
+    make_temps_individual.unregister()
     
-    remove_collisions_from_teeth.unregister()
+    import_export.unregister()
+    
     
     bpy.utils.unregister_class(AISceneSettings)
     del bpy.types.Scene.ai_settings

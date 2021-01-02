@@ -131,15 +131,13 @@ class D3TOOL_AI_export_segmentation_case(Operator, ExportHelper, IOSTLOrientatio
         
         #gather all important assets
         
-        data_seq = [ob for ob in context.scene.objects if ob.select]
-
-        for ob in bpy.data.object:
+        #data_seq = [ob for ob in context.scene.objects if ob.select]
+        data_seq = []
+        for ob in bpy.data.objects:
             if ob.get('d3output') == 1:
                 data_seq.append(ob)
 
-        
-            
-         
+        print(data_seq)
         temp_directory = tempfile.gettempdir()    
         manual_temp_directory = "C:\\Users\\paperspace\\AppData\\Local\\Temp"
         output_path = os.path.join(manual_temp_directory, self.case_name + ".zip")

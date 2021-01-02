@@ -1,8 +1,9 @@
 '''
-Created on Nov 27, 2019
+Created on Jan 1, 2021
 
 @author: Patrick
 '''
+
 import math
 import time
 
@@ -39,30 +40,43 @@ def get_convex(teeth):
     convex_teeth = [bpy.data.objects.get(ob.name + " Convex") for ob in teeth if ob.name + " Convex" in bpy.data.objects]     
     return convex_teeth
 
-def add_to_bmesh(bme, ob):
+def add_to_bmesh(bme, ob, transform = False):
     
     mx = ob.matrix_world
     imx = mx.inverted()
     
-    ob.data.transform(mx)
+    if transform:
+        ob.data.transform(mx)
     bme.from_mesh(ob.data)
-    ob.data.transform(imx)
+    if transform:
+        ob.data.transform(imx)
    
-def make_temp(teeth):    
+def make_temp(ob):    
     
-    #get gingiva BVH
+    new_name = ob.name.split(' ')[0] + ' Temp Shell'
+    if new_name in bpy.data.objects:
+        new_ob = bpy.data.objects.get(new_name)
+    else:
+        me = bpy.data.meshes.new(new_name)
+        new_ob = bpy.data.objects.new(new_name, me)
+        bpy.context.scene.objects.link(new_ob)
+        new_ob.parent = ob
+        new_ob.matrix_world = ob.matrix_world
+    
+    new_ob["d3output"] = True
+    
+    
     bme_subtract = bmesh.new()
     bme_join = bmesh.new()
-    
-    for ob in teeth:
+
        
-        r_name = ob.name.split(' ')[0] + ' root_prep'
-        root = bpy.data.objects.get(r_name)
+    r_name = ob.name.split(' ')[0] + ' root_prep'
+    root = bpy.data.objects.get(r_name)
         
-        add_to_bmesh(bme_join, ob)
+    add_to_bmesh(bme_join, ob)
         
-        if ob.get('PREPARED') == 1:
-            add_to_bmesh(bme_subtract, root)
+    if ob.get('PREPARED') == 1:
+        add_to_bmesh(bme_subtract, root)
     
         
         
@@ -98,13 +112,16 @@ def make_temp(teeth):
 
     bm.normal_update()
     
+    bm.to_mesh(new_ob.data)
+    bm.free()
     
-    return bm
+    
+    return new_ob
         
-class AITeeth_OT_make_temps(bpy.types.Operator):
+class AITeeth_OT_make_temps_individual(bpy.types.Operator):
     """Create Temp Shells"""
-    bl_idname = "ai_teeth.make_temp_bridge_shells"
-    bl_label = "Make Temp Bridge"
+    bl_idname = "ai_teeth.make_individual_temp_shells"
+    bl_label = "Make Temp Shells"
 
     
     @classmethod
@@ -162,43 +179,15 @@ class AITeeth_OT_make_temps(bpy.types.Operator):
         lower_obs = [ob for ob in obs if data_tooth_label(ob.name.split(' ')[0]) in tooth_numbering.lower_teeth]
         
         if len(upper_obs):
-            bm_upper = make_temp(upper_obs)
-            name = 'Temp '
-            for tooth in upper_obs:
-                name += 'x' + tooth.name.split(' ')[0]
-            if name not in bpy.data.objects:
-                me = bpy.data.meshes.new(name)
-                upper_ob = bpy.data.objects.new(name, me)
-                context.scene.objects.link(upper_ob)
-            else:
-                upper_ob = bpy.data.objects.get(name)
-                
-            bm_upper.to_mesh(upper_ob.data)
-            bm_upper.free()
-            upper_ob["d3output"] = True
             
-        if len(lower_obs):
-            bm_lower = make_temp(lower_obs)
-            name = 'Temp '
-            for tooth in lower_obs:
-                name += 'x' + tooth.name.split(' ')[0]
-            if name not in bpy.data.objects:
-                me = bpy.data.meshes.new(name)
-                lower_ob = bpy.data.objects.new(name, me)
-                context.scene.objects.link(lower_ob)
-            else:
-                upper_ob = bpy.data.objects.get(name)
-                
-            bm_lower.to_mesh(lower_ob.data)
-            bm_lower.free()
-            lower_ob["d3output"] = True
-            
-        for ob in obs:
-            ob.hide = True
-            ob.select = False
+            for ob in upper_obs:
+                make_temp(ob)
+            for ob in lower_obs:
+                make_temp(ob)
         
         #TODO, set up the modal operator
         return {'FINISHED'}
+    
     def draw(self, context):
         
         
@@ -227,9 +216,8 @@ class AITeeth_OT_make_temps(bpy.types.Operator):
             rowLL.prop(ob, "select", text = ob.name)   
 
 def register():
-    bpy.utils.register_class(AITeeth_OT_make_temps)
+    bpy.utils.register_class(AITeeth_OT_make_temps_individual)
 
 
 def unregister():
-    bpy.utils.unregister_class(AITeeth_OT_make_temps)
-
+    bpy.utils.unregister_class(AITeeth_OT_make_temps_individual)

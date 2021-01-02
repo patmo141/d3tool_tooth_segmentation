@@ -74,6 +74,7 @@ class AITeeth_OT_tooth_dies_popup(bpy.types.Operator):
                 
             if (ob.get('REMOVABLE_DIE') == 1) != ob.select:
                 ob['REMOVABLE_DIE'] = ob.select
+                
             
             ob.hide = ob.select
             for child in ob.children:
@@ -81,6 +82,11 @@ class AITeeth_OT_tooth_dies_popup(bpy.types.Operator):
                     child.hide = True
                 elif "root_prep" in child.name:
                     child.hide = ob.get('REMOVABLE_DIE') == 0
+                    child.show_x_ray = ob.get('REMOVABLE_DIE') == 1
+                    if ob.get('REMOVABLE_DIE'):
+                        child.draw_type = 'WIRE'
+                    else:
+                        child.draw_type = 'SOLID'
                 else:
                     child.hide = ob.select
                     
