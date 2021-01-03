@@ -239,6 +239,9 @@ class VIEW3D_PT_AITeeth(bpy.types.Panel):
         row.operator("d3ortho.keyframe_solid")
         
         row = layout.row()
+        row.operator("d3ortho.all_keyframes_to_solid")
+        
+        row = layout.row()
         row.label('Virtual Mockup Pipeline')
         
         row = layout.row()

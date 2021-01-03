@@ -163,7 +163,7 @@ class D3TOOL_AI_export_segmentation_case(Operator, ExportHelper, IOSTLOrientatio
             
             ob_file_path = os.path.join(manual_temp_directory, bpy.path.clean_name(ob.name) + ".stl")
             stl_utils.write_stl(filepath = ob_file_path, faces=faces)
-            zf.write(ob_file_path)
+            zf.write(ob_file_path, bpy.path.clean_name(ob.name) + ".stl")
             
         zf.close()
         
