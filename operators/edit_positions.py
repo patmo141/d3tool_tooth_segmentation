@@ -13,6 +13,7 @@ from ..subtrees.addon_common.cookiecutter.cookiecutter import CookieCutter
 from ..subtrees.addon_common.common.decorators import PersistentOptions
 from ..subtrees.addon_common.common import ui
 
+from .. import tooth_numbering
 
 npassed = 0
 
@@ -115,6 +116,10 @@ class D3Ortho_OT_adjust_tooth_positions(CookieCutter):
         "select": {"RIGHTMOUSE"},
         "commit": {"RET","RETURN",'ENTER'},
         "cancel": {"ESC"},
+        "torque_lingual": {"UP_ARROW"},
+        "torque_facial": {"DOWN_ARROW"},
+        "tip_mesial":{'LEFT_ARROW'},
+        "tip_distal":{'RIGHT_ARROW'}
     }
     
     ################################################
@@ -297,16 +302,105 @@ class D3Ortho_OT_adjust_tooth_positions(CookieCutter):
             self.done(cancel=True)
             return
         
-    
+        if self.actions.pressed("torque_facial"):
+            self.facial_torque_ob()
+        
+        if self.actions.pressed("torque_lingual"):
+            self.lingual_torque_ob()
+            
+        if self.actions.pressed("tip_mesial"):
+            self.crown_tip()
+            
+        if self.actions.pressed("tip_distal"):
+            self.crown_tip(ang = -.5)    
+            
     def set_crown(self):
         self.rotation_point = 'CROWN'
     def set_root(self):
         self.rotation_point = 'ROOT'
-        
     def set_cursor(self):
         self.rotation_point = 'CURSoR'
         
+       
+    def lingual_torque_ob(self, ang = .5):
         
+        ob = bpy.context.object
+        
+        mx = ob.matrix_world
+        q = mx.to_quaternion()
+        X = q * Vector((1, 0, 0))
+        rad_ang = math.pi * ang/180
+        rmx = Matrix.Rotation(rad_ang, 4, X)
+
+        if self.rotation_point in {'CURSOR', 'ROOT'}:
+            loc = bpy.context.scene.cursor_location
+        else:
+            loc = mx.to_translation()
+        Mx = Matrix.Translation(loc) * rmx * Matrix.Translation(-loc)
+            
+        
+        ob.matrix_world = Mx * mx
+            
+    def facial_torque_ob(self, ang = .5):
+        
+        ob = bpy.context.object
+        
+        mx = ob.matrix_world
+        q = mx.to_quaternion()
+        X = q * Vector((1, 0, 0))
+        rad_ang = -math.pi * ang/180
+        
+        rmx = Matrix.Rotation(rad_ang, 4, X)
+        
+        if self.rotation_point in {'CURSOR', 'ROOT'}:
+            loc = bpy.context.scene.cursor_location
+        else:
+            loc = mx.to_translation()
+        Mx = Matrix.Translation(loc) * rmx * Matrix.Translation(-loc)
+            
+        
+        ob.matrix_world = Mx * mx
+        
+        
+    def crown_tip(self, ang = 0.5):  
+        
+        
+        ob = bpy.context.object
+        
+        mx = ob.matrix_world
+        q = mx.to_quaternion()
+        Y = q * Vector((0,1,0))
+        X = q * Vector((1,0,0))
+        
+        view_mx = bpy.context.space_data.region_3d.view_matrix.to_3x3()
+        view_x = view_mx * Vector((1,0,0))
+        
+        #make sure we tip it with the view
+        if view_x.dot(X) > 0:
+            ang *= -1
+
+        
+        #tooth = tooth_numbering.data_tooth_label(ob.name.split(' ')[0])
+        #if tooth in tooth_numbering.upper_right + tooth_numbering.lower_left:
+        #    ang *= -1
+            
+        rad_ang = -math.pi * ang/180
+        rmx = Matrix.Rotation(rad_ang, 4, Y)
+        
+        
+        if self.rotation_point in {'CURSOR', 'ROOT'}:
+            loc = bpy.context.scene.cursor_location
+        else:
+            loc = mx.to_translation()
+            
+        Mx = Matrix.Translation(loc) * rmx * Matrix.Translation(-loc)
+        ob.matrix_world = Mx * mx
+            
+        
+        
+        
+        
+         
     def ui_setup(self):
         
         win_next_back = self.wm.create_window(None, {'pos':2, "vertical":False, "padding":15, 'movable':True, 'bgcolor':(0.50, 0.50, 0.50, 0.0), 'border_color':(0.50, 0.50, 0.50, 0.9), "border_width":4.0})
