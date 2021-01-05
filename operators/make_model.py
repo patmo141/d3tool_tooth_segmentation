@@ -65,7 +65,10 @@ def make_model(gingiva, teeth):
                 bme_die = bmesh.new()
                 add_to_bmesh(bme_die, root, transform = False)
                 add_to_bmesh(bme_die, ob, transform = False)
-                bmesh.ops.triangulate(bme_die, faces = bme_die.faces[:])
+                ngons = [f for f in bme_die.faces if len(f.verts) > 4]
+                bmesh.ops.poke(bme_die, faces = ngons)
+                quads = [f for f in bme_die.faces if len(f.verts) >= 4]
+                bmesh.ops.triangulate(bme_die, faces = quads)
                 bme_die2 = remesh_bme(bme_die, 
                           isovalue = 0.01, 
                           adaptivity = 0.5, 
@@ -91,8 +94,20 @@ def make_model(gingiva, teeth):
         if root:
             add_to_bmesh(bme_join, root)
     
-    bmesh.ops.triangulate(bme_subtract, faces = bme_subtract.faces[:])
-    bmesh.ops.triangulate(bme_join, faces = bme_join.faces[:])  
+    ngons = [f for f in bme_subtract.faces if len(f.verts) > 4]
+    if len(ngons):
+        bmesh.ops.poke(bme_subtract, faces = ngons)
+    quads= [f for f in bme_subtract.faces if len(f.verts) >= 4]
+    bmesh.ops.triangulate(bme_subtract, faces = quads)
+    
+    
+    ngons = [f for f in bme_join.faces if len(f.verts) > 4]
+    if len(ngons):
+        bmesh.ops.poke(bme_join, faces = ngons)
+    quads= [f for f in bme_join.faces if len(f.verts) >= 4]
+    bmesh.ops.triangulate(bme_join, faces = quads)
+    
+      
     voxel_size = .125
     verts0, tris0, quads0 = read_bmesh(bme_join)         
     vdb_base = convert_vdb(verts0, tris0, quads0, voxel_size)
@@ -102,12 +117,13 @@ def make_model(gingiva, teeth):
     bme_subtract.normal_update()
     for v in bme_subtract.verts:
         v.co += .15 * v.normal
-        
-    verts1, tris1, quads1 = read_bmesh(bme_subtract)         
-    vdb_subtract = convert_vdb(verts1, tris1, quads1, voxel_size)
-    bme_subtract.free()
     
-    vdb_base.difference(vdb_subtract, False)
+    if len(bme_subtract.verts) > 0:   
+        verts1, tris1, quads1 = read_bmesh(bme_subtract)         
+        vdb_subtract = convert_vdb(verts1, tris1, quads1, voxel_size)
+        bme_subtract.free()
+    
+        vdb_base.difference(vdb_subtract, False)
     
     ve, tr, qu = vdb_base.convertToPolygons(0.0, (3.0/100.0)**2)
 

@@ -495,13 +495,7 @@ def ortho_setup(base_ob, teeth, add_base = True, auto_trim = True, remove_collis
                     continue
              
             vs_inner = set(bme.verts) - out_patch_accurate
-            if 'Under Side' not in convex_teeth[i].vertex_groups:
-                vg = convex_teeth[i].vertex_groups.new('Under Side') 
-            else:
-                vg = convex_teeth[i].vertex_groups.get('Under Side')
             
-            vg.add([v.index for v in vs_inner], 1.0, type = 'REPLACE')
-                
             print('Took %f seconds to categorize the verts' % (time.time() - interval))
             interval = time.time()
             
@@ -554,6 +548,9 @@ def ortho_setup(base_ob, teeth, add_base = True, auto_trim = True, remove_collis
                     for vg in prox_vgs:
                         
                         vg_inds = get_inds_vg(convex_teeth[i], vg.name)
+                        
+                        print('removing %i verts in proximal from %i verts in underside' % (len(vg_inds), len(vs_inner)))
+                        vs_inner.difference_update([bme.verts[vi] for vi in vg_inds])
                         fs = set()
                         for vin in vg_inds:
                             fs.update(bme.verts[vin].link_faces[:])
@@ -597,6 +594,15 @@ def ortho_setup(base_ob, teeth, add_base = True, auto_trim = True, remove_collis
             #X,Y,Z = random_axes_from_normal(Z)
             Rmx = r_matrix_from_principal_axes(X,Y,Z).to_4x4()
         
+            
+            #Remove proximal from Under Side
+            if 'Under Side' not in convex_teeth[i].vertex_groups:
+                vg_under = convex_teeth[i].vertex_groups.new('Under Side') 
+            else:
+                vg_under = convex_teeth[i].vertex_groups.get('Under Side')
+            
+            vg_under.add([v.index for v in vs_inner], 1.0, type = 'REPLACE')
+            
             
             root_name = convex_teeth[i].name.split(' ')[0] + ' root_empty'
             

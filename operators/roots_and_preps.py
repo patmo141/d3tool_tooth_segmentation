@@ -288,7 +288,11 @@ def create_open_shell(bme, ob, sub_g):
     
     bmesh.ops.recalc_face_normals(bme, faces = bme.faces[:])
            
-def make_root_prep(ob, flat_root = True, root_length = 8.0, prep_width = .75, taper = 7.0, sub_g = .15):
+def make_root_prep(ob, flat_root = True, root_length = 8.0,
+                                        prep_width = .75, 
+                                        taper = 7.0, 
+                                        sub_g = .15,
+                                        angle_filtering = True):
     
     new_name = ob.name.split(' ')[0] + ' root_prep' 
     if new_name in bpy.data.objects:
@@ -365,13 +369,15 @@ def make_root_prep(ob, flat_root = True, root_length = 8.0, prep_width = .75, ta
     inner_verts = set([bme.verts[i] for i in bme_inds])
     
     #filter verst by normal
-    to_remove = []
-    for v in inner_verts:
-        if abs(v.normal.dot(Vector((0,0,1)))) < 0.3:
-            to_remove.append(v)
     
-    print('There are %i inner verts' % len(inner_verts))
-    inner_verts.difference_update(to_remove)
+    if angle_filtering:
+        to_remove = []
+        for v in inner_verts:
+            if abs(v.normal.dot(Vector((0,0,1)))) < 0.3:
+                to_remove.append(v)
+    
+                
+        inner_verts.difference_update(to_remove)
     print('There are %i inner verts' % len(inner_verts))
     
     inner_verts = increase_vert_selection(inner_verts, iterations = 2)
@@ -777,7 +783,7 @@ class AITeeth_OT_root_prep(bpy.types.Operator):
     anatomic_reduction = bpy.props.FloatProperty(name = 'Anatomic Reduction', default = 1.0)
     taper = bpy.props.FloatProperty(name = 'Taper', default = 7.0, min = 0.0, max = 15.0)
     sub_g = bpy.props.FloatProperty(name = 'Sub G', default = .12, min = 0.0, max = 1.0)
-    
+    angle_filtering = bpy.props.BoolProperty(name = 'Amgle Filtering', default = True)
     @classmethod
     def poll(cls, context):
 
@@ -818,7 +824,8 @@ class AITeeth_OT_root_prep(bpy.types.Operator):
                            prep_width= self.shoulder_width,
                            root_length= self.root_length,
                            taper = self.taper,
-                           sub_g = self.sub_g)
+                           sub_g = self.sub_g,
+                           angle_filtering = self.angle_filtering)
             print('\n\n\n')
             bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
 
