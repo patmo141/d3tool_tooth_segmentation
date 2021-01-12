@@ -50,7 +50,7 @@ from .operators import full_ortho_setup, cloud_export_stl, pick_teeth, segment_t
 from .operators import view_operators, roots_and_preps, orient_model, mark_extracted, mark_prepped, mark_dies, mark_pontics
 from .operators import composite_buttons, edit_positions, edit_axes, keyframe_to_solid, remove_collisions_from_teeth
 from .operators import make_model, make_temps, make_temps_individual
-
+from .operators import convert_to_library
 
 class AISceneSettings(bpy.types.PropertyGroup):
     accept_ua = BoolProperty(name = 'Accept User Agreement', default = False, description = "Acknowledge that you have read and agree to the user agreement")
@@ -325,6 +325,8 @@ def register():
     make_temps.register()
     make_temps_individual.register()
     
+    convert_to_library.register()
+    
     import_export.register()
     
     
@@ -385,6 +387,8 @@ def unregister():
     make_model.unregister()
     make_temps.unregister()
     make_temps_individual.unregister()
+    
+    convert_to_library.unregister()
     
     import_export.unregister()
     
