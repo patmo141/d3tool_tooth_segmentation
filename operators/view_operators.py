@@ -19,7 +19,7 @@ from ..common.utils import get_settings
 
 from ..tooth_numbering import upper_right, upper_left, lower_left, lower_right, upper_view_order, lower_view_order, data_tooth_label
     
-    
+from ..tooth_numbering import upper_anterior, lower_anterior, upper_eshtetic_zone, lower_eshtetic_zone
     
 def get_convex(teeth):
     convex_teeth = [bpy.data.objects.get(ob.name + " Convex") for ob in teeth if ob.name + " Convex" in bpy.data.objects]     
@@ -41,9 +41,7 @@ def get_teeth(context):
     all_teeth = [ob for ob in context.scene.objects if ob.type == 'MESH' and 'tooth' in ob.data.name]
     upper_teeth = [ob for ob in all_teeth if data_tooth_label(ob.name) in tooth_numbering.upper_teeth]
     lower_teeth = [ob for ob in all_teeth if data_tooth_label(ob.name) in tooth_numbering.lower_teeth]
-    
-    
-    
+
     return all_teeth, selected_teeth, upper_teeth, lower_teeth
     
 
@@ -176,27 +174,27 @@ class AITeeth_OT_tooth_sel_popup(bpy.types.Operator):
     def update_teeth(self, context):
         
         
-        all, sel, upper, lower = get_teeth(context)
+        all_teeth, sel, upper, lower = get_teeth(context)
         
         if self.tooth_type == 'CONVEX':
-            all = get_convex(all)
+            all_teeth = get_convex(all_teeth)
             sel = get_convex(sel)
             upper = get_convex(upper)
             lower = get_convex(lower)
             
         if self.tooth_type == 'ROOT':
-            all = get_roots(all)
+            all_teeth = get_roots(all_teeth)
             sel = get_roots(sel)
             upper = get_roots(upper)
             lower = get_roots(lower)
             
         if self.tooth_type == 'THIMBLE':
-            all = get_thimbles(all)
+            all_teeth = get_thimbles(all_teeth)
             sel = get_thimbles(sel)
             upper = get_thimbles(upper)
             lower = get_thimbles(lower)
             
-        for ob in all:
+        for ob in all_teeth:
             ob.hide_select = False
                     
         self.upper_teeth = upper
@@ -219,7 +217,7 @@ class AITeeth_OT_tooth_sel_popup(bpy.types.Operator):
         self.hidden_obs = [ob for ob in bpy.data.objects if ob.hide]
         self.visible_obs = [ob for ob in bpy.data.objects if not ob.hide]
         
-        all, sel, upper, lower = get_teeth(context)
+        all_teeth, sel, upper, lower = get_teeth(context)
         
         self.upper_teeth = upper
         self.lower_teeth = lower
@@ -312,19 +310,144 @@ class AITeeth_OT_tooth_sel_popup(bpy.types.Operator):
             rowLL.prop(ob, "select", text = ob.name)      
         
         
-        #for ob in self.upper_teeth:
-        #    row.prop(ob, "hide", text = ob.name)
+class AITeeth_OT_tooth_quick_view(bpy.types.Operator):
+    """Process model for shell reduction"""
+    bl_idname = "ai_teeth.tooth_quick_view"
+    bl_label = "Tooth Quick View"
+    #bl_options = {'REGISTER', 'UNDO'}
+    
+    tooth_type = bpy.props.EnumProperty(name = 'Element Type', 
+                                        items = (('ORIGINAL','ORIGINAL','ORIGINAL'), ('CONVEX','CONVEX','CONVEX'), ('ROOT', 'ROOT', 'ROOT'), ('THIMBLE', 'THIMBLE', 'THIMBLE')),
+                                        default = 'CONVEX')
+
+
+    arch = bpy.props.EnumProperty(name = 'Arch', 
+                                        items = (('TOP','TOP','TOP'),
+                                                 ('BOTTOM','BOTTOM','BOTTOM'),
+                                                 ('ALL','ALL','ALL')),
+                                        default = 'ALL')
+    region = bpy.props.EnumProperty(name = 'Region Type', 
+                                        items = (('RIGHT', 'RIGHT', 'RIGHT'),
+                                                 ('LEFT', 'LEFT', 'LEFT'),
+                                                 ('ANTERIOR', 'ANTERIOR', 'ANTERIOR'),
+                                                 ('POSTERIOR', 'POSTERIOR', 'POSTERIOR'),
+                                                 ('ALL', 'ALL', 'ALL')),
+                                        default = 'ALL')
+    
+    
+    @classmethod
+    def poll(cls, context):
         
-        #row = self.layout.row()
-        #for ob in self.lower_teeth:
-        #    row.prop(ob, "hide", text = ob.name)
+        return True
+    
+    def check(self, context):
+        
+        self.update_teeth(context)
+        
+        for tooth in self.all_teeth:
+            if tooth in self.visible_teeth:
+                tooth.hide = False
+            else:
+                tooth.hide = True
+        
+        UG = bpy.data.objects.get('Upper Gingiva')
+        LG = bpy.data.objects.get('Lower Gingiva')
+        
+        if self.arch == 'TOP' or self.arch == 'ALL':
+            
+            if UG != None:
+                UG.hide = False
+        else:
+            if UG != None:
+                UG.hide = True
+        
+        if self.arch == 'BOTTOM' or self.arch == 'ALL':
+            if LG != None:
+                LG.hide = False
+        else:
+            if LG != None:
+                LG.hide = True
+        
+        
+            
+                
+        return True
+    
+    
+    def update_teeth(self, context):
+        
+        
+        all_teeth, sel, upper, lower = get_teeth(context)
+        
+        if self.tooth_type == 'CONVEX':
+            all_teeth = get_convex(all_teeth)
+            sel = get_convex(sel)
+            upper = get_convex(upper)
+            lower = get_convex(lower)
+        
+        
+        self.all_teeth = all_teeth
+        
+        visibility_set = set()
+        if self.arch == 'TOP' or self.arch == 'ALL':
+            visibility_set.update(upper_right + upper_left)
+        if self.arch == 'BOTTOM' or self.arch == 'ALL':
+            visibility_set.update(lower_right + lower_left)
+        
+        
+        if self.region == 'ANTERIOR':
+            visibility_set.intersection_update(lower_anterior + upper_anterior)
+        
+        if self.region == 'POSTERIOR':
+            visibility_set.difference_update(lower_anterior + upper_anterior)
+        
+        if self.region == 'RIGHT':
+            visibility_set.intersection_update(upper_right + lower_right)             
+        
+        if self.region == 'LEFT':
+            visibility_set.intersection_update(upper_left + lower_left)    
+        
+
+        print(visibility_set)
+        self.visible_teeth = [tooth for tooth in all_teeth if data_tooth_label(tooth.name.split(' ')[0]) in visibility_set]
+        print(self.visible_teeth)
+        
+    def invoke(self, context, event):
+        
+        self.hidden_obs = [ob for ob in bpy.data.objects if ob.hide]
+        self.visible_obs = [ob for ob in bpy.data.objects if not ob.hide]
+        self.visible_teeth = []
+        self.all_teeth = []
+    
+        self.update_teeth(context)
+        
+
+        
+        return context.window_manager.invoke_props_dialog(self, width = 700)
+        
+    def execute(self, context):
+
+        return {'FINISHED'}
+    
+    def draw(self, context):
+        row = self.layout.row()
+        row.label('Selection')
+        
+        row = self.layout.row()
+        row.prop(self, "arch")
+            
+        row = self.layout.row()
+        row.prop(self, "region")
+        
             
 
 def register():
+    bpy.utils.register_class(AITeeth_OT_tooth_quick_view)
     bpy.utils.register_class(AITeeth_OT_tooth_vis_popup)
     bpy.utils.register_class(AITeeth_OT_tooth_sel_popup)
 
 
 def unregister():
+    bpy.utils.register_class(AITeeth_OT_tooth_quick_view)
     bpy.utils.unregister_class(AITeeth_OT_tooth_vis_popup)
     bpy.utils.unregister_class(AITeeth_OT_tooth_sel_popup)

@@ -11,7 +11,10 @@ upper_right = ['1','2','3','4','5','6','7','8']
 upper_left = ['9','10','11','12','13','14','15','16']
 lower_left = ['17','18','19','20','21','22','23','24']
 lower_right = ['25','26','27','28','29','30','31','32']
-
+upper_anterior = ['6','7','8','9','10','11']
+lower_anterior = ['22','23','24','25','26','27']
+upper_eshtetic_zone = ['5', '6','7','8','9','10','11','12']
+lower_eshtetic_zone = ['21','22','23','24','25','26','27','28']
 
 upper_view_order = upper_right + upper_left
 lower_view_order = [ele for ele in reversed(lower_right)] + [ele for ele in reversed(lower_left)]
